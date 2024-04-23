@@ -4,7 +4,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 
-DOMAIN = "rce"
+from .const import DOMAIN
 
 PLATFORMS = [Platform.CALENDAR, Platform.SENSOR]
 
