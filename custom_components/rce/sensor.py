@@ -13,8 +13,10 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from datetime import datetime, timedelta, timezone
 
+SENTINEL = object()
 SCAN_INTERVAL = timedelta(seconds=20)
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
     """Konfiguracja za pomcą przepływu konfiguracji."""
