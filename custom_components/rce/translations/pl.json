@@ -1,0 +1,11 @@
+{
+    "title": "Kalendarz ograniczeń PSE",
+    "config": {
+        "step": {
+            "user": {
+                "description": "Czy chcesz dodać integrację ograniczeń PSE?",
+                "title": "Ograniczenia PSE"
+            }
+        }
+    }
+}
