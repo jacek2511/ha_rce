@@ -8,7 +8,7 @@ from .const import DOMAIN
 
 PLATFORMS = [Platform.CALENDAR, Platform.SENSOR]
 
-async def async_setup(hass: HomeAssistant, config):
+async def async_setup(hass: HomeAssistant, config: dict):
      """Set up the component."""
      hass.data[DOMAIN] = {}
      return True
