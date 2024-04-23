@@ -1,0 +1,11 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "Do you want to add PSE Calendar integration",
+                "title": "PSE Calendar"
+            }
+        }
+    },
+    "title": "PSE Calendar"
+}
