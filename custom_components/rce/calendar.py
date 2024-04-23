@@ -71,7 +71,7 @@ class RCECalendar(CalendarEntity):
             if datetime.now(ZoneInfo(self.hass.config.time_zone)) < ev.end:
                 return ev
 
-    def fetch_cloud_data(self):
+    def today(self):
         """fetch today data"""
         now = datetime.now(ZoneInfo(self.hass.config.time_zone))
         try:
@@ -84,7 +84,7 @@ class RCECalendar(CalendarEntity):
         except ReadTimeout:
             self.cloud_response = ""
 
-    def fetch_cloud_data_1(self):
+    def tomorrow(self):
         """fetch tomorrow data"""
         now = datetime.now(ZoneInfo(self.hass.config.time_zone)) + timedelta(days=1)
         try:
@@ -119,7 +119,7 @@ class RCECalendar(CalendarEntity):
             return
         self.last_network_pull = now
         self.cloud_response = None
-        await self.hass.async_add_executor_job(self.fetch_cloud_data)
+        await self.hass.async_add_executor_job(self.today)
 
         if self.cloud_response is None or self.cloud_response.status_code != 200:
             return False
@@ -130,7 +130,7 @@ class RCECalendar(CalendarEntity):
         self.csv_to_events(csv_output, now)
 
         self.cloud_response = None
-        await self.hass.async_add_executor_job(self.fetch_cloud_data_1)
+        await self.hass.async_add_executor_job(self.tomorrow)
 
         if self.cloud_response is None or self.cloud_response.status_code != 200:
             return False
