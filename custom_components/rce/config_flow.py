@@ -4,7 +4,7 @@ from homeassistant import config_entries
 from . import DOMAIN
 
 
-class PSECallendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class PSECalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Example config flow."""
 
     # The schema version of the entries that it creates
