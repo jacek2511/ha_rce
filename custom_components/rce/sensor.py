@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 import requests
 import logging
 
-from homeassistant.components.calendar import CalendarEntity, CalendarEvent
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
