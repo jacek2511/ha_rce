@@ -100,7 +100,6 @@ class RCESensor(SensorEntity):
             "manufacturer": DOMAIN,
         }
   
-    @property
     def today(self):
         """fetch today data"""
         now = datetime.now(ZoneInfo(self.hass.config.time_zone))
@@ -114,7 +113,6 @@ class RCESensor(SensorEntity):
         except ReadTimeout:
             self.cloud_response = ""
 
-    @property
     def tomorrow(self):
         """fetch tomorrow data"""
         now = datetime.now(ZoneInfo(self.hass.config.time_zone)) + timedelta(days=1)
@@ -127,3 +125,43 @@ class RCESensor(SensorEntity):
         except requests.exceptions.ReadTimeout:
             self.cloud_response = ""
 
+    def csv_to_sensor(self, csv_reader: csv, day: datetime):
+        """Transform csv to sensor"""
+        
+        for row in csv_reader:
+            if not row[1].isnumeric():
+                continue
+            self.sensor_attr.append(
+                CalendarEvent(
+                    day.replace(hour=int(row[1])-1),
+                    day.replace(hour=int(row[1])-1,minute=59,second=59),
+                    row[2],
+                )
+            )
+            event_start = int(row[1])
+
+    async def async_update(self):
+        """Retrieve latest state."""
+        now = datetime.now(ZoneInfo(self.hass.config.time_zone))
+        if now < self.last_network_pull + timedelta(minutes=30):
+            return
+        self.last_network_pull = now
+        self.cloud_response = None
+        await self.hass.async_add_executor_job(self.today)
+
+        if self.cloud_response is None or self.cloud_response.status_code != 200:
+            return False
+        self.ev.clear()
+
+        csv_output = csv.reader(self.cloud_response.text.splitlines(), delimiter=";")
+        now = now.replace(minute=0).replace(second=0)
+        self.csv_to_sensor(csv_output, now)
+
+        self.cloud_response = None
+        await self.hass.async_add_executor_job(self.tomorrow)
+
+        if self.cloud_response is None or self.cloud_response.status_code != 200:
+            return False
+
+        csv_output = csv.reader(self.cloud_response.text.splitlines(), delimiter=";")
+        now = now.replace(minute=0).replace(second=0) + timedelta(days=1)
