@@ -140,6 +140,32 @@ class RCESensor(SensorEntity):
             )
             event_start = int(row[1])
 
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "average": self._average,
+            "off_peak_1": self._off_peak_1,
+            "off_peak_2": self._off_peak_2,
+            "peak": self._peak,
+            "min": self._min,
+            "max": self._max,
+            "mean": self._mean,
+            "unit": self.unit,
+            "currency": self._currency,
+            "country": _REGIONS[self._area][1],
+            "region": self._area,
+            "low_price": self.low_price,
+            "price_percent_to_average": self.price_percent_to_average,
+            "today": self.today,
+            "tomorrow": self.tomorrow,
+            "tomorrow_valid": self.tomorrow_valid,
+            "raw_today": self.raw_today,
+            "raw_tomorrow": self.raw_tomorrow,
+            "current_price": self.current_price,
+            "additional_costs_current_hour": self.additional_costs,
+            "price_in_cents": self._use_cents,
+        }
+    
     async def async_update(self):
         """Retrieve latest state."""
         now = datetime.now(ZoneInfo(self.hass.config.time_zone))
