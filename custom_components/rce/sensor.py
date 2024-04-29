@@ -54,6 +54,29 @@ class RCESensor(SensorEntity):
         # To control the updates.
         self._last_tick = None
 
+    def _update(self):
+        """Set attrs"""
+        today = self.today
+
+        if not today:
+            _LOGGER.debug("No data for today, unable to set attrs")
+            return
+
+        self._average = mean(today)
+        self._min = min(today)
+        self._max = max(today)
+        self._off_peak_1 = mean(today[0:8])
+        self._off_peak_2 = mean(today[20:])
+        self._peak = mean(today[8:20])
+        self._mean = median(today)
+
+    @property
+    def current_price(self) -> float:
+        """This the current price for the hour we are in at any given time."""
+        res = self._calc_price()
+        # _LOGGER.debug("Current hours price for %s is %s", self.name, res)
+        return res
+
     @property
     def name(self) -> str:
         return self.unique_id
@@ -152,18 +175,12 @@ class RCESensor(SensorEntity):
             "mean": self._mean,
             "unit": self.unit,
             "currency": self._currency,
-            "country": _REGIONS[self._area][1],
-            "region": self._area,
-            "low_price": self.low_price,
-            "price_percent_to_average": self.price_percent_to_average,
             "today": self.today,
             "tomorrow": self.tomorrow,
             "tomorrow_valid": self.tomorrow_valid,
             "raw_today": self.raw_today,
             "raw_tomorrow": self.raw_tomorrow,
             "current_price": self.current_price,
-            "additional_costs_current_hour": self.additional_costs,
-            "price_in_cents": self._use_cents,
         }
     
     async def async_update(self):
