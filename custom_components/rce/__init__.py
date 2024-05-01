@@ -16,7 +16,7 @@ async def async_setup(hass: HomeAssistant, config):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
      """Set up RCE integration."""
      hass.async_create_task(
-          hass.config_entries.async_forward_entry_setup(entry, "calendar")
+          hass.config_entries.async_forward_entry_setup(entry, PLATFORMS)
      )
      return True
 
