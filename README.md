@@ -1,7 +1,6 @@
 # homeassistant-rce
 Rynkowa cena energii elektrycznej (RCE)
 
-
 This is an integration between Home Assistant and PSE RCE
 
 Install
