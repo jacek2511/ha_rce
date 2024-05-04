@@ -6,7 +6,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, PLATFORMS
 
-async def async_setup(hass: HomeAssistant, config: configType):
+async def async_setup(hass: HomeAssistant, config: configType) -> bool:
      """Set up the component."""
      hass.data[DOMAIN] = {}
      return True
