@@ -1,10 +1,10 @@
 {
-    "title": "PSE Calendar",
+    "title": "PSE Sensor",
     "config": {
         "step": {
             "user": {
-                "description": "Do you want to add PSE Calendar integration",
-                "title": "PSE Calendar"
+                "description": "Do you want to add PSE RCE integration",
+                "title": "PSE RCE Sensor"
             }
         }
     }
