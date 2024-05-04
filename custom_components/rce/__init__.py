@@ -6,8 +6,6 @@ from homeassistant.const import Platform
 
 from .const import DOMAIN
 
-PLATFORMS = [Platform.SENSOR]
-
 async def async_setup(hass: HomeAssistant, config):
      """Set up the component."""
      hass.data[DOMAIN] = {}
@@ -16,13 +14,21 @@ async def async_setup(hass: HomeAssistant, config):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
      """Set up RCE integration."""
      hass.async_create_task(
-          hass.config_entries.async_forward_entry_setup(entry, PLATFORMS)
+          hass.config_entries.async_forward_entry_setup(entry, "sensor")
      )
      return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
      """Unload a config entry."""
-     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+     unload_ok = await hass.config_entries.async_forward_entry_unload(entry, "sensor")
+     
+     if unload_ok:
           hass.data[DOMAIN].pop(entry.entry_id)
+          return unload_ok
+     return False
+     
 
-     return unload_ok
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+     """Reload config entry."""
+     await async_unload_entry(hass, entry)
+     await async_setup_entry(hass, entry)
