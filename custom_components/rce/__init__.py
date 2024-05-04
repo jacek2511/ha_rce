@@ -6,7 +6,7 @@ from homeassistant.const import Platform
 
 from .const import DOMAIN
 
-PLATFORMS = [Platform.CALENDAR, Platform.SENSOR]
+PLATFORMS = [Platform.SENSOR]
 
 async def async_setup(hass: HomeAssistant, config):
      """Set up the component."""
