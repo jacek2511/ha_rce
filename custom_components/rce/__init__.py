@@ -5,7 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 
 from .const import DOMAIN
 
-async def async_setup(hass: HomeAssistant, config):
+async def async_setup(hass: HomeAssistant, config: dict):
      """Set up the component."""
      hass.data[DOMAIN] = {}
      return True
