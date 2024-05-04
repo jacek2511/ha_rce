@@ -1,6 +1,9 @@
 """Platform for sensor integration."""
 from __future__ import annotations
 import csv
+#import locale
+#import asyncio
+from statistics import mean, median
 from zoneinfo import ZoneInfo
 
 import requests
@@ -10,11 +13,17 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
 from datetime import datetime, timedelta, timezone
+from .const import DOMAIN
 
 SENTINEL = object()
-SCAN_INTERVAL = timedelta(seconds=20)
+SCAN_INTERVAL = timedelta(seconds=60)
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -27,36 +36,36 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
 
 class RCESensor(SensorEntity):
     "Sensors data"
-    _attr_device_class = SensorDeviceClass.MONETARY
+#    _attr_device_class = SensorDeviceClass.MONETARY
     _attr_suggested_display_precision = None
-    _attr_state_class = SensorStateClass.TOTAL    
 
     def __init__(self) -> None:
         _LOGGER.info("RCE sensor")
         super().__init__()
-        self.cr_time = None
         self.last_update = None
-        self.cloud_response = None
+        self.pse_response = None
         self.last_network_pull = datetime(
             year=2000, month=1, day=1, tzinfo=timezone.utc
         )
 
-        self._hass = hass
         self._attr_force_update = True
+
+        # Values for the day
+        self._average = None
+        self._max = None
+        self._min = None
+        self._mean = None
+        self._off_peak_1 = None
+        self._off_peak_2 = None
+        self._peak = None
 
         # Price by current hour.
         self._current_price = None
 
-        # Holds the data for today and morrow.
-        self._data_today = SENTINEL
-        self._data_tomorrow = SENTINEL
 
-        # To control the updates.
-        self._last_tick = None
-
-    def _update(self):
+    def _update(self, today: list):
         """Set attrs"""
-        today = self.today
+#        today = self.csv_to_day(0)
 
         if not today:
             _LOGGER.debug("No data for today, unable to set attrs")
@@ -69,51 +78,24 @@ class RCESensor(SensorEntity):
         self._off_peak_2 = mean(today[20:])
         self._peak = mean(today[8:20])
         self._mean = median(today)
-
-    @property
-    def current_price(self) -> float:
-        """This the current price for the hour we are in at any given time."""
-        res = self._calc_price()
-        # _LOGGER.debug("Current hours price for %s is %s", self.name, res)
-        return res
-
+#        self._update_current_price(today)
+        
     @property
     def name(self) -> str:
         return self.unique_id
 
-    @property
-    def should_poll(self):
-        """No need to poll. Coordinator notifies entity of updates."""
-        return False
+#    @property
+#    def should_poll(self):
+#        """No need to poll. Coordinator notifies entity of updates."""
+#        return False
 
     @property
     def icon(self) -> str:
         return "mdi:flash"
 
     @property
-    def unit(self) -> str:
-        """Unit"""
-        return self._price_type
-
-    @property
-    def unit_of_measurement(self) -> str:  # FIXME
-        """Return the unit of measurement this sensor expresses itself in."""
-        _currency = self._currency
-        if self._use_cents is True:
-            # Convert unit of measurement to cents based on chosen currency
-            _currency = _CURRENTY_TO_CENTS[_currency]
-        return "%s/%s" % (_currency, self._price_type)
-
-    @property
     def unique_id(self):
-        name = "rce_%s_%s_%s_%s" % (
-            self._price_type,
-            self._area,
-            self._currency,
-            self._precision,
-        )
-        name = name.lower().replace(".", "")
-        return name
+        return "rce_pse"
 
     @property
     def device_info(self):
@@ -122,66 +104,107 @@ class RCESensor(SensorEntity):
             "name": self.name,
             "manufacturer": DOMAIN,
         }
-  
-    def today(self):
-        """fetch today data"""
-        now = datetime.now(ZoneInfo(self.hass.config.time_zone))
-        try:
-            self.cloud_response = requests.get(
-                f"https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{now.strftime('%Y%m%d')}",
-                timeout=10,
-            )
-            self.cloud_response.encoding = 'ISO-8859-2'
+ 
+    def _update_current_price(self, today) -> None:
+        """update the current price (price this hour)"""
+        hour = int(datetime.now().strftime('%H'))
+        self._current_price = today[hour]
 
-        except ReadTimeout:
-            self.cloud_response = ""
-
-    def tomorrow(self):
-        """fetch tomorrow data"""
-        now = datetime.now(ZoneInfo(self.hass.config.time_zone)) + timedelta(days=1)
+        return self._current_price
+    
+#    @property
+#    def native_value(self):
+#        """Return the value reported by the sensor."""
+#        return self._update_current_price()
+    
+    async def sday(self, dday: int):
+        """fetch day data"""
+        now = datetime.now() + timedelta(days=dday)
         try:
-            self.cloud_response = requests.get(
-                f"https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{now.strftime('%Y%m%d')}",
-                timeout=10,
-            )
-            self.cloud_response.encoding = 'ISO-8859-2'
+#            self.pse_response = await requests.get(
+#                f"https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{now.strftime('%Y%m%d')}",
+#                timeout=10,
+#            )
+            url = f"https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{now.strftime('%Y%m%d')}"
+            self.pse_response = await self.hass.async_add_executor_job(requests.get, url) 
+#			self.pse_response.encoding = 'ISO-8859-2'
+    
+            if self.pse_response is None or self.pse_response.status_code != 200:
+                return False
+    
+            return csv.reader(self.pse_response.text.splitlines(), delimiter=";")
+    
         except requests.exceptions.ReadTimeout:
-            self.cloud_response = ""
-
-    def csv_to_sensor(self, csv_reader: csv, day: datetime):
+            self.pse_response = ""
+    
+    async def csv_to_day(self, dday: int) -> list:
         """Transform csv to sensor"""
-        
-        for row in csv_reader:
-            if not row[1].isnumeric():
-                continue
-            self.sensor_attr.append(
-                CalendarEvent(
-                    day.replace(hour=int(row[1])-1),
-                    day.replace(hour=int(row[1])-1,minute=59,second=59),
-                    row[2],
+#        locale.setlocale(locale.LC_NUMERIC, 'pl_PL.UTF-8')
+      
+        csv_reader = await self.sday(dday)
+#        return 10       
+        if csv_reader: 
+            data_pse = []
+            for row in csv_reader:
+                if not row[1].isnumeric():
+                    continue
+                data_pse.append(
+    				float(row[2].replace(',','.')),
+#                    locale.atof(row[2])
                 )
-            )
-            event_start = int(row[1])
+            if not data_pse and dday == 0:
+                _LOGGER.debug("No data for today, unable to set attrs")
+                return
+            if dday == 0:
+                self._average = mean(data_pse)
+                self._min = min(data_pse)
+                self._max = max(data_pse)
+                self._off_peak_1 = mean(data_pse[0:8])
+                self._off_peak_2 = mean(data_pse[20:])
+                self._peak = mean(data_pse[8:20])
+                self._mean = median(data_pse)
+            
+            return data_pse
+    
+    async def csv_to_day_row(self, dday: int) -> list:
+        """Transform csv to sensor"""
+       
+#        locale.setlocale(locale.LC_NUMERIC, 'pl_PL.UTF-8')
+    
+        now = datetime.now()
+        csv_reader = await self.sday(dday)
+        if csv_reader: 
+            now = now.replace(minute=0).replace(second=0) + timedelta(days=dday)
+            data_pse = []
+            for row in csv_reader:
+                if not row[1].isnumeric():
+                    continue
+#				data_pse.append(
+#					day.replace(hour=int(row[1])-1),
+#					day.replace(hour=int(row[1])-1,minute=59,second=59),
+#					row[2],
+#				)
+                i = {
+                    "start" : now.replace(hour=int(row[1])-1),
+                    "end" : now.replace(hour=int(row[1])-1,minute=59,second=59),
+                    "value": float(row[2].replace(',','.')),
+                }
+                data_pse.append(i)
+            return data_pse
 
-    @property
-    def extra_state_attributes(self) -> dict:
-        return {
-            "average": self._average,
-            "off_peak_1": self._off_peak_1,
-            "off_peak_2": self._off_peak_2,
-            "peak": self._peak,
-            "min": self._min,
-            "max": self._max,
-            "mean": self._mean,
-            "unit": self.unit,
-            "currency": self._currency,
-            "today": self.today,
-            "tomorrow": self.tomorrow,
-            "tomorrow_valid": self.tomorrow_valid,
-            "raw_today": self.raw_today,
-            "raw_tomorrow": self.raw_tomorrow,
-            "current_price": self.current_price,
-        }
+#    @property
+#    def extra_state_attributes(self) -> dict:
+#        return {
+#            "average": self._average,
+#            "off_peak_1": self._off_peak_1,
+#            "off_peak_2": self._off_peak_2,
+#            "peak": self._peak,
+#            "min": self._min,
+#            "max": self._max,
+#            "mean": self._mean,
+#            "today": self.csv_to_day(0),
+#            "tomorrow": self.csv_to_day(1),
+#        }
     
     async def async_update(self):
         """Retrieve latest state."""
@@ -189,22 +212,20 @@ class RCESensor(SensorEntity):
         if now < self.last_network_pull + timedelta(minutes=30):
             return
         self.last_network_pull = now
-        self.cloud_response = None
-        await self.hass.async_add_executor_job(self.today)
-
-        if self.cloud_response is None or self.cloud_response.status_code != 200:
-            return False
-        self.ev.clear()
-
-        csv_output = csv.reader(self.cloud_response.text.splitlines(), delimiter=";")
-        now = now.replace(minute=0).replace(second=0)
-        self.csv_to_sensor(csv_output, now)
-
-        self.cloud_response = None
-        await self.hass.async_add_executor_job(self.tomorrow)
-
-        if self.cloud_response is None or self.cloud_response.status_code != 200:
-            return False
-
-        csv_output = csv.reader(self.cloud_response.text.splitlines(), delimiter=";")
-        now = now.replace(minute=0).replace(second=0) + timedelta(days=1)
+        self.pse_response = None
+        today = await self.csv_to_day(0)
+        self._update(today)
+        self._attr_native_value = self._update_current_price(today)
+        self._attr_extra_state_attributes = {
+            "average": self._average,
+            "off_peak_1": self._off_peak_1,
+            "off_peak_2": self._off_peak_2,
+            "peak": self._peak,
+            "min": self._min,
+            "max": self._max,
+            "mean": self._mean,
+            "today": today,
+            "tomorrow": await self.csv_to_day(1),
+            "row_today": await self.csv_to_day_row(0),
+            "row_tomorrow": await self.csv_to_day_row(1),
+        }
