@@ -3,7 +3,7 @@
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
-from .const import DOMAIN
+from .const import DOMAIN, PLATFORMS
 
 async def async_setup(hass: HomeAssistant, config: dict):
      """Set up the component."""
