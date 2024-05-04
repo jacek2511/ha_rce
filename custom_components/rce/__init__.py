@@ -3,8 +3,11 @@
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.const import Platform
 
-from .const import DOMAIN, PLATFORMS
+from .const import DOMAIN
+
+PLATFORMS = [Platform.SENSOR]
 
 async def async_setup(hass: HomeAssistant, config: configType) -> bool:
      """Set up the component."""
