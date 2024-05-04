@@ -13,17 +13,13 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
 
 from datetime import datetime, timedelta, timezone
-from .const import DOMAIN
+from .const import DOMAIN, DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE
+
 
 SENTINEL = object()
-SCAN_INTERVAL = timedelta(seconds=60)
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -36,8 +32,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
 
 class RCESensor(SensorEntity):
     "Sensors data"
-#    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_device_class = SensorDeviceClass.MONETARY
     _attr_suggested_display_precision = None
+    _attr_state_class = SensorStateClass.TOTAL
 
     def __init__(self) -> None:
         _LOGGER.info("RCE sensor")
@@ -65,7 +62,6 @@ class RCESensor(SensorEntity):
 
     def _update(self, today: list):
         """Set attrs"""
-#        today = self.csv_to_day(0)
 
         if not today:
             _LOGGER.debug("No data for today, unable to set attrs")
@@ -78,7 +74,6 @@ class RCESensor(SensorEntity):
         self._off_peak_2 = mean(today[20:])
         self._peak = mean(today[8:20])
         self._mean = median(today)
-#        self._update_current_price(today)
         
     @property
     def name(self) -> str:
@@ -105,6 +100,17 @@ class RCESensor(SensorEntity):
             "manufacturer": DOMAIN,
         }
  
+    @property
+    def unit(self) -> str:
+        """Unit"""
+        return DEFAULT_PRICE_TYPE
+
+
+    @property
+    def unit_of_measurement(self) -> str:
+        """Return the unit of measurement this sensor expresses itself in."""
+        return "%s/%s" % (DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE)
+
     def _update_current_price(self, today) -> None:
         """update the current price (price this hour)"""
         hour = int(datetime.now().strftime('%H'))
@@ -127,7 +133,6 @@ class RCESensor(SensorEntity):
 #            )
             url = f"https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{now.strftime('%Y%m%d')}"
             self.pse_response = await self.hass.async_add_executor_job(requests.get, url) 
-#			self.pse_response.encoding = 'ISO-8859-2'
     
             if self.pse_response is None or self.pse_response.status_code != 200:
                 return False
@@ -139,10 +144,8 @@ class RCESensor(SensorEntity):
     
     async def csv_to_day(self, dday: int) -> list:
         """Transform csv to sensor"""
-#        locale.setlocale(locale.LC_NUMERIC, 'pl_PL.UTF-8')
       
         csv_reader = await self.sday(dday)
-#        return 10       
         if csv_reader: 
             data_pse = []
             for row in csv_reader:
@@ -150,7 +153,6 @@ class RCESensor(SensorEntity):
                     continue
                 data_pse.append(
     				float(row[2].replace(',','.')),
-#                    locale.atof(row[2])
                 )
             if not data_pse and dday == 0:
                 _LOGGER.debug("No data for today, unable to set attrs")
@@ -169,8 +171,6 @@ class RCESensor(SensorEntity):
     async def csv_to_day_row(self, dday: int) -> list:
         """Transform csv to sensor"""
        
-#        locale.setlocale(locale.LC_NUMERIC, 'pl_PL.UTF-8')
-    
         now = datetime.now()
         csv_reader = await self.sday(dday)
         if csv_reader: 
@@ -179,11 +179,6 @@ class RCESensor(SensorEntity):
             for row in csv_reader:
                 if not row[1].isnumeric():
                     continue
-#				data_pse.append(
-#					day.replace(hour=int(row[1])-1),
-#					day.replace(hour=int(row[1])-1,minute=59,second=59),
-#					row[2],
-#				)
                 i = {
                     "start" : now.replace(hour=int(row[1])-1),
                     "end" : now.replace(hour=int(row[1])-1,minute=59,second=59),
@@ -224,6 +219,8 @@ class RCESensor(SensorEntity):
             "min": self._min,
             "max": self._max,
             "mean": self._mean,
+            "unit": self.unit,
+            "currency": DEFAULT_CURRENCY, 
             "today": today,
             "tomorrow": await self.csv_to_day(1),
             "row_today": await self.csv_to_day_row(0),
