@@ -4,15 +4,14 @@ from homeassistant import config_entries
 from . import DOMAIN
 
 
-class PSECalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Example config flow."""
+class PSESensorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     # The schema version of the entries that it creates
     # Home Assistant will call your migrate method if the version changes
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        await self.async_set_unique_id("pse_calendr_config_flow")
+        await self.async_set_unique_id("pse_sensor_config_flow")
         self._abort_if_unique_id_configured()
         return self.async_show_form(step_id="hello")
 
