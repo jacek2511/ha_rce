@@ -18,7 +18,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from datetime import datetime, timedelta, timezone
 from .const import DOMAIN, SCAN_INTERVAL, DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE
 
-
+URL = "https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{day}"
 SENTINEL = object()
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class RCESensor(SensorEntity):
 
         if not today:
             _LOGGER.debug("No data for today, unable to set attrs")
-            return
+            return False
 
         self._average = mean(today)
         self._min = min(today)
@@ -78,7 +78,7 @@ class RCESensor(SensorEntity):
 
     @property
     def icon(self) -> str:
-        return "mdi:flash"
+        return "mdi:currency-eur"
 
     @property
     def unique_id(self):
