@@ -123,8 +123,8 @@ class RCESensor(SensorEntity):
 #                f"https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{now.strftime('%Y%m%d')}",
 #                timeout=10,
 #            )
-            url = f"https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{now.strftime('%Y%m%d')}"
-            self.pse_response = await self.hass.async_add_executor_job(requests.get, url) 
+#            url = f"https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{now.strftime('%Y%m%d')}"
+            self.pse_response = await self.hass.async_add_executor_job(requests.get, URL.format(now.strftime('%Y%m%d'))) 
     
             if self.pse_response is None or self.pse_response.status_code != 200:
                 return False
