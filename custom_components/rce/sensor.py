@@ -187,6 +187,22 @@ class RCESensor(SensorEntity):
                 data_pse.append(i)
             return data_pse
 
+    async def csv_to_time(self, dday: int) -> list:
+        """Transform csv to sensor"""
+       
+        now = datetime.now()
+        csv_reader = await self.sday(dday)
+        if csv_reader: 
+            now = now.replace(minute=0).replace(second=0) + timedelta(days=dday)
+            data_pse = []
+            for row in csv_reader:
+                if not row[1].isnumeric():
+                    continue
+                data_pse.append(
+    				 now.replace(hour=int(row[1])-1).strftime('%Y-%m-%d %H:%M:%S'),
+                )
+            return data_pse
+    
 #    @property
 #    def extra_state_attributes(self) -> dict:
 #        return {
@@ -224,5 +240,7 @@ class RCESensor(SensorEntity):
             "today": today,
             "tomorrow": await self.csv_to_day(1),
             "row_today": await self.csv_to_day_row(0),
-            "row_tomorrow": await self.csv_to_day_row(1),
+            "row_tomorrow": await self.csv_to_day_row(1)
+            "start_time_today": await self.csv_to_time(0),
+            "start_time_tomorrow": await self.csv_to_time(1),
         }
