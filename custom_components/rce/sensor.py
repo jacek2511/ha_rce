@@ -39,13 +39,10 @@ class RCESensor(SensorEntity):
     def __init__(self) -> None:
         _LOGGER.info("RCE sensor")
         super().__init__()
-        self.last_update = None
         self.pse_response = None
         self.last_network_pull = datetime(
             year=2000, month=1, day=1, tzinfo=timezone.utc
         )
-
-        self._attr_force_update = True
 
         # Values for the day
         self._average = None
@@ -79,18 +76,13 @@ class RCESensor(SensorEntity):
     def name(self) -> str:
         return self.unique_id
 
-#    @property
-#    def should_poll(self):
-#        """No need to poll. Coordinator notifies entity of updates."""
-#        return False
-
     @property
     def icon(self) -> str:
         return "mdi:flash"
 
     @property
     def unique_id(self):
-        return "rce_pse"
+        return "rce_pse_pln"
 
     @property
     def device_info(self):
@@ -119,9 +111,9 @@ class RCESensor(SensorEntity):
         return self._current_price
     
 #    @property
-#    def native_value(self):
+#    def native_value(self, today):
 #        """Return the value reported by the sensor."""
-#        return self._update_current_price()
+#        return self._update_current_price(today)
     
     async def sday(self, dday: int):
         """fetch day data"""
@@ -154,9 +146,9 @@ class RCESensor(SensorEntity):
                 data_pse.append(
     				float(row[2].replace(',','.')),
                 )
-            if not data_pse and dday == 0:
-                _LOGGER.debug("No data for today, unable to set attrs")
-                return
+            if not data_pse:
+                _LOGGER.debug("No data for a day, unable to set attrs")
+                return False
             
             return data_pse
     
@@ -193,21 +185,12 @@ class RCESensor(SensorEntity):
                 data_pse.append(
     				 now.replace(hour=int(row[1])-1).strftime('%Y-%m-%d %H:%M:%S'),
                 )
+
+            if not data_pse:
+                _LOGGER.debug("No data for a day, unable to set attrs")
+                return False
+            
             return data_pse
-    
-#    @property
-#    def extra_state_attributes(self) -> dict:
-#        return {
-#            "average": self._average,
-#            "off_peak_1": self._off_peak_1,
-#            "off_peak_2": self._off_peak_2,
-#            "peak": self._peak,
-#            "min": self._min,
-#            "max": self._max,
-#            "mean": self._mean,
-#            "today": self.csv_to_day(0),
-#            "tomorrow": self.csv_to_day(1),
-#        }
     
     async def async_update(self):
         """Retrieve latest state."""
