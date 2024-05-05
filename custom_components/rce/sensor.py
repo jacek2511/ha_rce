@@ -157,14 +157,6 @@ class RCESensor(SensorEntity):
             if not data_pse and dday == 0:
                 _LOGGER.debug("No data for today, unable to set attrs")
                 return
-            if dday == 0:
-                self._average = mean(data_pse)
-                self._min = min(data_pse)
-                self._max = max(data_pse)
-                self._off_peak_1 = mean(data_pse[0:8])
-                self._off_peak_2 = mean(data_pse[20:])
-                self._peak = mean(data_pse[8:20])
-                self._mean = median(data_pse)
             
             return data_pse
     
@@ -239,8 +231,8 @@ class RCESensor(SensorEntity):
             "currency": DEFAULT_CURRENCY, 
             "today": today,
             "tomorrow": await self.csv_to_day(1),
-            "row_today": await self.csv_to_day_row(0),
-            "row_tomorrow": await self.csv_to_day_row(1)
             "start_time_today": await self.csv_to_time(0),
             "start_time_tomorrow": await self.csv_to_time(1),
+            "row_today": await self.csv_to_day_row(0),
+            "row_tomorrow": await self.csv_to_day_row(1),
         }
