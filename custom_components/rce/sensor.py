@@ -195,7 +195,8 @@ class RCESensor(SensorEntity):
     async def async_update(self):
         """Retrieve latest state."""
         now = datetime.now(ZoneInfo(self.hass.config.time_zone))
-        if now < self.last_network_pull + timedelta(minutes=30):
+#        if now < self.last_network_pull + timedelta(minutes=30):
+        if now.strftime('%H') == self.last_network_pull.strftime('%H'):
             return
         self.last_network_pull = now
         self.pse_response = None
