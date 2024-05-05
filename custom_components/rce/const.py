@@ -6,4 +6,4 @@ DOMAIN = "rce"
 DEFAULT_CURRENCY = "zł"
 DEFAULT_PRICE_TYPE = "MWh"
 
-SCAN_INTERVAL = timedelta(seconds=60)
+SCAN_INTERVAL = timedelta(seconds=30)
