@@ -54,7 +54,7 @@ class RCESensor(SensorEntity):
         self._peak = None
 
         # Price by current hour.
-        self._current_price = None
+#        self._current_price = None
 
 
     def _update(self, today: list):
@@ -74,7 +74,7 @@ class RCESensor(SensorEntity):
         
     @property
     def name(self) -> str:
-        return self.unique_id
+        return "Rynkowa Cena Energi Elektrycznej"
 
     @property
     def icon(self) -> str:
@@ -106,10 +106,8 @@ class RCESensor(SensorEntity):
     def _update_current_price(self, today) -> None:
         """update the current price (price this hour)"""
         hour = int(datetime.now().strftime('%H'))
-        self._current_price = today[hour]
+        return today[hour]
 
-        return self._current_price
-    
 #    @property
 #    def native_value(self, today):
 #        """Return the value reported by the sensor."""
