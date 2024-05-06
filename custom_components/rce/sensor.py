@@ -13,6 +13,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.helpers.entity import generate_entity_id
 #from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
 
 from datetime import datetime, timedelta, timezone
@@ -39,6 +40,7 @@ class RCESensor(SensorEntity):
     def __init__(self) -> None:
         _LOGGER.info("RCE sensor")
         super().__init__()
+        self.entity_id = generate_entity_id("sensor.{}", "rce_pse_pln") 
         self.pse_response = None
         self.last_network_pull = datetime(
             year=2000, month=1, day=1, tzinfo=timezone.utc
