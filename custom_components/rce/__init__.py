@@ -2,30 +2,31 @@
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
-#from homeassistant.helpers.typing import ConfigType
-from homeassistant.const import Platform
 
-from .const import DOMAIN
+from .const import DOMAIN, _LOGGER
 
-PLATFORMS = [Platform.SENSOR]
-
-async def async_setup(hass: HomeAssistant, config) -> bool:
-     """Set up the component."""
-     hass.data[DOMAIN] = {}
-     return True
+async def async_setup(hass: HomeAssistant, config: dict):
+    """Set up this integration using YAML is not supported."""
+    if DOMAIN not in hass.data:
+        hass.data.setdefault(DOMAIN, {})
+        _LOGGER.info("RCE-async_setup")
+    return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-     """Set up RCE integration."""
-     hass.async_create_task(
-          hass.config_entries.async_forward_entry_setup(entry, "sensor")
-     )
-     return True
+    """Set up RCE integration."""
+    _LOGGER.info("RCE-async_setup_entry " + str(entry))
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "sensor")
+    )
+    return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-     """Unload a config entry."""
-     if unload_ok := await hass.config_entries.async_forward_entry_unload(entry, PLATFORMS):
-          hass.data[DOMAIN].pop(entry.entry_id)
-          return unload_ok
+    """Unload a config entry."""
+    _LOGGER.info("RCE-async_unload_entry remove entities")
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_unload(entry, "sensor")
+    )
+    return True
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
      """Reload config entry."""
