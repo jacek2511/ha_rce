@@ -1,13 +1,11 @@
 """Platform for sensor integration."""
 from __future__ import annotations
 import csv
+import requests
 #import locale
 #import asyncio
 from statistics import mean, median
 from zoneinfo import ZoneInfo
-
-import requests
-import logging
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.core import HomeAssistant
