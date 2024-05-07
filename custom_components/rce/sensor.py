@@ -13,15 +13,15 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from homeassistant.helpers.entity import generate_entity_id
+#from homeassistant.helpers.entity import generate_entity_id
 #from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
 
 from datetime import datetime, timedelta, timezone
-from .const import DOMAIN, SCAN_INTERVAL, DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE
+from .const import DOMAIN, SCAN_INTERVAL, DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE, _LOGGER
+
 
 URL = "https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{day}"
 SENTINEL = object()
-_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
@@ -36,15 +36,19 @@ class RCESensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_suggested_display_precision = None
     _attr_state_class = SensorStateClass.TOTAL
+    _attr_has_entity_name = True
 
     def __init__(self) -> None:
         _LOGGER.info("RCE sensor")
         super().__init__()
-#        self.entity_id = generate_entity_id("sensor.{}", "rce_pse_pln") 
+ #       self.last_update = None
         self.pse_response = None
+#        self.entity_id = "sensor.rce_pse_pln" 
         self.last_network_pull = datetime(
             year=2000, month=1, day=1, tzinfo=timezone.utc
         )
+
+#        self._attr_force_update = True
 
         # Values for the day
         self._average = None
@@ -64,7 +68,7 @@ class RCESensor(SensorEntity):
 
         if not today:
             _LOGGER.debug("No data for today, unable to set attrs")
-            return False
+            return
 
         self._average = mean(today)
         self._min = min(today)
@@ -84,7 +88,7 @@ class RCESensor(SensorEntity):
 
     @property
     def unique_id(self):
-        return "rce_pse"
+        return "rce_pse_pln"
 
     @property
     def device_info(self):
@@ -93,12 +97,11 @@ class RCESensor(SensorEntity):
             "name": self.name,
             "manufacturer": DOMAIN,
         }
- 
+
     @property
     def unit(self) -> str:
         """Unit"""
         return DEFAULT_PRICE_TYPE
-
 
     @property
     def unit_of_measurement(self) -> str:
@@ -109,21 +112,16 @@ class RCESensor(SensorEntity):
         """update the current price (price this hour)"""
         hour = int(datetime.now().strftime('%H'))
         return today[hour]
-
+    
 #    @property
-#    def native_value(self, today):
+#    def native_value(self):
 #        """Return the value reported by the sensor."""
-#        return self._update_current_price(today)
+#        return self._update_current_price()
     
     async def sday(self, dday: int):
         """fetch day data"""
         now = datetime.now() + timedelta(days=dday)
         try:
-#            self.pse_response = await requests.get(
-#                f"https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{now.strftime('%Y%m%d')}",
-#                timeout=10,
-#            )
-#            url = f"https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{now.strftime('%Y%m%d')}"
             self.pse_response = await self.hass.async_add_executor_job(requests.get, URL.format(day=now.strftime('%Y%m%d'))) 
     
             if self.pse_response is None or self.pse_response.status_code != 200:
@@ -149,10 +147,10 @@ class RCESensor(SensorEntity):
             if not data_pse:
                 _LOGGER.debug("No data for a day, unable to set attrs")
                 return False
-            
+           
             return data_pse
     
-    async def csv_to_day_row(self, dday: int) -> list:
+    async def csv_to_day_raw(self, dday: int) -> list:
         """Transform csv to sensor"""
        
         now = datetime.now()
@@ -164,7 +162,7 @@ class RCESensor(SensorEntity):
                 if not row[1].isnumeric():
                     continue
                 i = {
-                    "start" : now.replace(hour=int(row[1])-1),
+                    "start" : now.replace(hour=int(row[1])-1).strftime('%Y-%m-%d %H:%M:%S'),
                     "end" : now.replace(hour=int(row[1])-1,minute=59,second=59),
                     "value": float(row[2].replace(',','.')),
                 }
@@ -185,17 +183,25 @@ class RCESensor(SensorEntity):
                 data_pse.append(
     				 now.replace(hour=int(row[1])-1).strftime('%Y-%m-%d %H:%M:%S'),
                 )
-
-            if not data_pse:
-                _LOGGER.debug("No data for a day, unable to set attrs")
-                return False
-            
             return data_pse
+
+#    @property
+#    def extra_state_attributes(self) -> dict:
+#        return {
+#            "average": self._average,
+#            "off_peak_1": self._off_peak_1,
+#            "off_peak_2": self._off_peak_2,
+#            "peak": self._peak,
+#            "min": self._min,
+#            "max": self._max,
+#            "mean": self._mean,
+#            "today": self.csv_to_day(0),
+#            "tomorrow": self.csv_to_day(1),
+#        }
     
     async def async_update(self):
         """Retrieve latest state."""
         now = datetime.now(ZoneInfo(self.hass.config.time_zone))
-#        if now < self.last_network_pull + timedelta(minutes=30):
         if now.strftime('%H') == self.last_network_pull.strftime('%H'):
             return
         self.last_network_pull = now
@@ -203,6 +209,7 @@ class RCESensor(SensorEntity):
         today = await self.csv_to_day(0)
         self._update(today)
         self._attr_native_value = self._update_current_price(today)
+#        tomorrow = await self.csv_to_day(1)
         self._attr_extra_state_attributes = {
             "average": self._average,
             "off_peak_1": self._off_peak_1,
@@ -217,6 +224,6 @@ class RCESensor(SensorEntity):
             "tomorrow": await self.csv_to_day(1),
             "start_time_today": await self.csv_to_time(0),
             "start_time_tomorrow": await self.csv_to_time(1),
-            "row_today": await self.csv_to_day_row(0),
-            "row_tomorrow": await self.csv_to_day_row(1),
+#            "raw_today": await self.csv_to_day_raw(0),
+#            "raw_tomorrow": await self.csv_to_day_raw(1),
         }
