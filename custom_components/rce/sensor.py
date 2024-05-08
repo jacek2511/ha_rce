@@ -15,7 +15,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 #from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
 
 from datetime import datetime, timedelta, timezone
-from .const import DOMAIN, SCAN_INTERVAL, DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE, _LOGGER
+from .const import DOMAIN, _LOGGER, SCAN_INTERVAL, DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE
 
 
 URL = "https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{day}"
@@ -34,7 +34,7 @@ class RCESensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_suggested_display_precision = None
     _attr_state_class = SensorStateClass.TOTAL
-    _attr_has_entity_name = True
+#    _attr_has_entity_name = True
 
     def __init__(self) -> None:
         _LOGGER.info("RCE sensor")
@@ -128,7 +128,7 @@ class RCESensor(SensorEntity):
             return csv.reader(self.pse_response.text.splitlines(), delimiter=";")
     
         except requests.exceptions.ReadTimeout:
-            self.pse_response = ""
+            self.pse_response = None
     
     async def csv_to_day(self, dday: int) -> list:
         """Transform csv to sensor"""
@@ -148,6 +148,22 @@ class RCESensor(SensorEntity):
            
             return data_pse
     
+    async def csv_to_time(self, dday: int) -> list:
+        """Transform csv to sensor"""
+       
+        now = datetime.now()
+        csv_reader = await self.sday(dday)
+        if csv_reader: 
+            now = now.replace(minute=0).replace(second=0) + timedelta(days=dday)
+            data_pse = []
+            for row in csv_reader:
+                if not row[1].isnumeric():
+                    continue
+                data_pse.append(
+    				 now.replace(hour=int(row[1])-1).strftime('%Y-%m-%d %H:%M:%S'),
+                )
+            return data_pse
+
     async def csv_to_day_raw(self, dday: int) -> list:
         """Transform csv to sensor"""
        
@@ -167,22 +183,6 @@ class RCESensor(SensorEntity):
                 data_pse.append(i)
             return data_pse
 
-    async def csv_to_time(self, dday: int) -> list:
-        """Transform csv to sensor"""
-       
-        now = datetime.now()
-        csv_reader = await self.sday(dday)
-        if csv_reader: 
-            now = now.replace(minute=0).replace(second=0) + timedelta(days=dday)
-            data_pse = []
-            for row in csv_reader:
-                if not row[1].isnumeric():
-                    continue
-                data_pse.append(
-    				 now.replace(hour=int(row[1])-1).strftime('%Y-%m-%d %H:%M:%S'),
-                )
-            return data_pse
-
 #    @property
 #    def extra_state_attributes(self) -> dict:
 #        return {
@@ -196,13 +196,8 @@ class RCESensor(SensorEntity):
 #            "today": self.csv_to_day(0),
 #            "tomorrow": self.csv_to_day(1),
 #        }
-    
-    async def async_update(self):
-        """Retrieve latest state."""
-        now = datetime.now(ZoneInfo(self.hass.config.time_zone))
-        if now.strftime('%H') == self.last_network_pull.strftime('%H'):
-            return
-        self.last_network_pull = now
+
+    async def full_update(self):
         self.pse_response = None
         today = await self.csv_to_day(0)
         self._update(today)
@@ -225,3 +220,28 @@ class RCESensor(SensorEntity):
 #            "raw_today": await self.csv_to_day_raw(0),
 #            "raw_tomorrow": await self.csv_to_day_raw(1),
         }
+        return today
+
+    async def tomorrow_update(self):
+        self._attr_extra_state_attributes = {
+            "tomorrow": await self.csv_to_day(1),
+            "start_time_tomorrow": await self.csv_to_time(1),
+        }
+        
+   
+    async def async_update(self):
+        """Retrieve latest state."""
+        now = datetime.now(ZoneInfo(self.hass.config.time_zone))
+        if now.strftime('%d%Y') != self.last_network_pull.strftime('%d%Y'):
+            await self.full_update()
+            self.last_network_pull = now
+            return
+        if now.strftime('%H') == self.last_network_pull.strftime('%H'):
+            return
+        today = self._attr_extra_state_attributes["today"]
+        self._attr_native_value = self._update_current_price(today)
+        self.last_network_pull = now
+        if not self._attr_extra_state_attributes["tomorrow"] and int(now.strftime('%H')) > 14: 
+#            await self.tomorrow_update()
+            await self.full_update()
+            self.last_network_pull = now
