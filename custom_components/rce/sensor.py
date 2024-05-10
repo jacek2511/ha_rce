@@ -2,15 +2,14 @@
 from __future__ import annotations
 import csv
 import requests
-#import locale
 #import asyncio
-from statistics import mean, median
+from statistics import mean, median, geometric_mean, harmonic_mean
 from zoneinfo import ZoneInfo
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.helpers.device_registry import DeviceEntryType
 #from homeassistant.helpers.entity import generate_entity_id
 #from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
 
@@ -34,19 +33,17 @@ class RCESensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_suggested_display_precision = None
     _attr_state_class = SensorStateClass.TOTAL
-#    _attr_has_entity_name = True
+    _attr_has_entity_name = True
 
     def __init__(self) -> None:
+        """Initialize Forecast.Solar sensor."""
         _LOGGER.info("RCE sensor")
         super().__init__()
- #       self.last_update = None
+
         self.pse_response = None
-#        self.entity_id = "sensor.rce_pse_pln" 
         self.last_network_pull = datetime(
             year=2000, month=1, day=1, tzinfo=timezone.utc
         )
-
-#        self._attr_force_update = True
 
         # Values for the day
         self._average = None
@@ -56,9 +53,8 @@ class RCESensor(SensorEntity):
         self._off_peak_1 = None
         self._off_peak_2 = None
         self._peak = None
-
-        # Price by current hour.
-#        self._current_price = None
+        self._peak_geometric_mean = None
+        self._peak_harmonic_mean = None
 
 
     def _update(self, today: list):
@@ -75,6 +71,8 @@ class RCESensor(SensorEntity):
         self._off_peak_2 = mean(today[20:])
         self._peak = mean(today[8:20])
         self._mean = median(today)
+        self._peak_geometric_mean = geometric_mean(today[8:20])
+        self._peak_harmonic_mean = harmonic_mean(today[8:20])
         
     @property
     def name(self) -> str:
@@ -91,9 +89,10 @@ class RCESensor(SensorEntity):
     @property
     def device_info(self):
         return {
+            "entry_type": DeviceEntryType.SERVICE,
             "identifiers": {(DOMAIN, self.unique_id)},
-            "name": self.name,
-            "manufacturer": DOMAIN,
+            "name": "Rynkowa Cena Energii Elektrycznej",
+            "manufacturer": "PSE.RCE",
         }
 
     @property
@@ -110,11 +109,6 @@ class RCESensor(SensorEntity):
         """update the current price (price this hour)"""
         hour = int(datetime.now().strftime('%H'))
         return today[hour]
-    
-#    @property
-#    def native_value(self):
-#        """Return the value reported by the sensor."""
-#        return self._update_current_price()
     
     async def sday(self, dday: int):
         """fetch day data"""
@@ -133,36 +127,42 @@ class RCESensor(SensorEntity):
     async def csv_to_day(self, dday: int) -> list:
         """Transform csv to sensor"""
       
+        data_pse = {}
         csv_reader = await self.sday(dday)
         if csv_reader: 
-            data_pse = []
             for row in csv_reader:
                 if not row[1].isnumeric():
                     continue
-                data_pse.append(
+                data_pse.setdefault("tariff", []).append(
     				float(row[2].replace(',','.')),
+                )
+                now = datetime.now()
+                now = now.replace(minute=0).replace(second=0) + timedelta(days=dday)
+                data_pse.setdefault("time", []).append(
+                    now.replace(hour=int(row[1])-1).strftime('%Y-%m-%d %H:%M:%S'),
                 )
             if not data_pse:
                 _LOGGER.debug("No data for a day, unable to set attrs")
-                return False
-           
-            return data_pse
+        else:
+            data_pse.setdefault("tariff", None)
+            data_pse.setdefault("time", None)
+        return data_pse
     
-    async def csv_to_time(self, dday: int) -> list:
-        """Transform csv to sensor"""
-       
-        now = datetime.now()
-        csv_reader = await self.sday(dday)
-        if csv_reader: 
-            now = now.replace(minute=0).replace(second=0) + timedelta(days=dday)
-            data_pse = []
-            for row in csv_reader:
-                if not row[1].isnumeric():
-                    continue
-                data_pse.append(
-    				 now.replace(hour=int(row[1])-1).strftime('%Y-%m-%d %H:%M:%S'),
-                )
-            return data_pse
+#    async def csv_to_time(self, dday: int) -> list:
+#        """Transform csv to sensor"""
+#       
+#        now = datetime.now()
+#        csv_reader = await self.sday(dday)
+#        if csv_reader: 
+#            now = now.replace(minute=0).replace(second=0) + timedelta(days=dday)
+#            data_pse = []
+#            for row in csv_reader:
+#                if not row[1].isnumeric():
+#                    continue
+#                data_pse.append(
+#    				 now.replace(hour=int(row[1])-1).strftime('%Y-%m-%d %H:%M:%S'),
+#                )
+#            return data_pse
 
     async def csv_to_day_raw(self, dday: int) -> list:
         """Transform csv to sensor"""
@@ -183,6 +183,7 @@ class RCESensor(SensorEntity):
                 data_pse.append(i)
             return data_pse
 
+
 #    @property
 #    def extra_state_attributes(self) -> dict:
 #        return {
@@ -200,9 +201,9 @@ class RCESensor(SensorEntity):
     async def full_update(self):
         self.pse_response = None
         today = await self.csv_to_day(0)
-        self._update(today)
-        self._attr_native_value = self._update_current_price(today)
-#        tomorrow = await self.csv_to_day(1)
+        self._update(today["tariff"])
+        self._attr_native_value = self._update_current_price(today["tariff"])
+        tomorrow = await self.csv_to_day(1)
         self._attr_extra_state_attributes = {
             "average": self._average,
             "off_peak_1": self._off_peak_1,
@@ -211,23 +212,24 @@ class RCESensor(SensorEntity):
             "min": self._min,
             "max": self._max,
             "mean": self._mean,
+            "geometric_mean": self._peak_geometric_mean,
+            "harmonic_mean": self._peak_harmonic_mean,
             "unit": self.unit,
             "currency": DEFAULT_CURRENCY, 
-            "today": today,
-            "tomorrow": await self.csv_to_day(1),
-            "start_time_today": await self.csv_to_time(0),
-            "start_time_tomorrow": await self.csv_to_time(1),
+            "today": today["tariff"],
+            "tomorrow": tomorrow["tariff"],
+            "start_time_today": today["time"],
+            "start_time_tomorrow": tomorrow["time"],
 #            "raw_today": await self.csv_to_day_raw(0),
 #            "raw_tomorrow": await self.csv_to_day_raw(1),
         }
-        return today
+        return
 
-    async def tomorrow_update(self):
-        self._attr_extra_state_attributes = {
-            "tomorrow": await self.csv_to_day(1),
-            "start_time_tomorrow": await self.csv_to_time(1),
-        }
-        
+#    async def tomorrow_update(self):
+#        self._attr_extra_state_attributes = {
+#            "tomorrow": await self.csv_to_day(1),
+#            "start_time_tomorrow": await self.csv_to_time(1),
+#        }
    
     async def async_update(self):
         """Retrieve latest state."""
@@ -238,8 +240,8 @@ class RCESensor(SensorEntity):
             return
         if now.strftime('%H') == self.last_network_pull.strftime('%H'):
             return
-        today = self._attr_extra_state_attributes["today"]
-        self._attr_native_value = self._update_current_price(today)
+        today_price = self._attr_extra_state_attributes["today"]
+        self._attr_native_value = self._update_current_price(today_price)
         self.last_network_pull = now
         if not self._attr_extra_state_attributes["tomorrow"] and int(now.strftime('%H')) > 14: 
 #            await self.tomorrow_update()
