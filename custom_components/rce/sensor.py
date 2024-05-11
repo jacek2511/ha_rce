@@ -2,7 +2,6 @@
 from __future__ import annotations
 import csv
 import requests
-#import asyncio
 from statistics import mean, median, harmonic_mean
 from zoneinfo import ZoneInfo
 
@@ -22,9 +21,6 @@ SENTINEL = object()
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
-    """Konfiguracja za pomcą przepływu konfiguracji."""
-    
-    """This one is in use"""
     async_add_entities([RCESensor()])
 
 
@@ -36,14 +32,11 @@ class RCESensor(SensorEntity):
     _attr_has_entity_name = True
 
     def __init__(self) -> None:
-        """Initialize Forecast.Solar sensor."""
+        """Initialize RCE sensor."""
         _LOGGER.info("RCE sensor")
         super().__init__()
-
         self.pse_response = None
-        self.last_network_pull = datetime(
-            year=2000, month=1, day=1, tzinfo=timezone.utc
-        )
+        self.last_network_pull = datetime(year=2000, month=1, day=1, tzinfo=timezone.utc)
 
         # Values for the day
         self._average = None
@@ -195,7 +188,6 @@ class RCESensor(SensorEntity):
             "min": self._min,
             "max": self._max,
             "mean": self._mean,
-            "geometric_mean": self._peak_geometric_mean,
             "harmonic_mean": self._peak_harmonic_mean,
             "unit": self.unit,
             "currency": DEFAULT_CURRENCY, 
