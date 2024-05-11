@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 import requests
 #import asyncio
-from statistics import mean, median, geometric_mean, harmonic_mean
+from statistics import mean, median, harmonic_mean
 from zoneinfo import ZoneInfo
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
@@ -71,7 +71,6 @@ class RCESensor(SensorEntity):
         self._off_peak_2 = mean(today[20:])
         self._peak = mean(today[8:20])
         self._mean = median(today)
-        self._peak_geometric_mean = geometric_mean(today[10:18])
         self._peak_harmonic_mean = harmonic_mean(today[10:18])
         
     @property
