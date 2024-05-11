@@ -71,8 +71,8 @@ class RCESensor(SensorEntity):
         self._off_peak_2 = mean(today[20:])
         self._peak = mean(today[8:20])
         self._mean = median(today)
-        self._peak_geometric_mean = geometric_mean(today[8:20])
-        self._peak_harmonic_mean = harmonic_mean(today[8:20])
+        self._peak_geometric_mean = geometric_mean(today[10:18])
+        self._peak_harmonic_mean = harmonic_mean(today[10:18])
         
     @property
     def name(self) -> str:
