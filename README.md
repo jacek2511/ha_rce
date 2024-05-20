@@ -8,8 +8,7 @@ The RCE sensor provides the current price with today's and tomorrow's prices as 
 <a href="https://github.com/RomRider/apexcharts-card">ApexCharts</a> card is recommended for visualization of the data in Home Assistant.
 
 Example configuration for the cards
-<div class="highlight highlight-source-yaml notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="
-type: custom:apexcharts-card
+<pre class="wp-block-code"><code>type: custom:apexcharts-card
 graph_span: 24h
 span:
   start: day
@@ -33,8 +32,7 @@ series:
     data_generator: |
       return entity.attributes.today.map((start, index) => {
         return [new Date(start["start"]).getTime(), entity.attributes.today[index]['tariff']];
-      });
-">
+      });</code></pre>
 
 # Install
 
