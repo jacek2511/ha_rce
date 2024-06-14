@@ -1,6 +1,10 @@
 # homeassistant-rce
 Rynkowa cena energii elektrycznej (RCE)
 
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/custom-components/hacs) 
+[![usage_badge](https://img.shields.io/badge/dynamic/json?style=for-the-badge&label=Usage&query=rce.total&url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json)](https://analytics.home-assistant.io) 
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=rce)  
+
 This is an integration between Home Assistant and PSE RCE
 
 The RCE sensor provides the current price with today's and tomorrow's prices as attributes. Prices for the next day become available around 3:00 p.m.
