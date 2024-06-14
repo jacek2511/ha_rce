@@ -1,6 +1,6 @@
 """Platform for sensor integration."""
 from __future__ import annotations
-import csv
+import json
 import requests
 from statistics import mean, median 
 from zoneinfo import ZoneInfo
@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from .const import DOMAIN, _LOGGER, SCAN_INTERVAL, DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE, CONF_CUSTOM_PEAK_HOURS_RANGE, CONF_LOW_PRICE_CUTOFF, DEFAULT_CUSTOM_PEAK_HOURS_RANGE, DEFAULT_LOW_PRICE_CUTOFF
 
 
-URL = "https://www.pse.pl/getcsv/-/export/csv/PL_CENY_RYN_EN/data/{day}"
+URL = "https://api.raporty.pse.pl/api/rce-pln?$filter=doba eq '{day}'"
 SENTINEL = object()
 
 
@@ -120,37 +120,36 @@ class RCESensor(SensorEntity):
         hour = int(datetime.now().strftime('%H'))
         return today[hour]['tariff']
 
+    
     async def sday(self, dday: int):
         """fetch day data"""
         now = datetime.now() + timedelta(days=dday)
         try:
-            self.pse_response = await self.hass.async_add_executor_job(requests.get, URL.format(day=now.strftime('%Y%m%d'))) 
-    
-            if self.pse_response is None or self.pse_response.status_code != 200:
+            self.pse_response = await self.hass.async_add_executor_job(requests.get, URL.format(day=now.strftime('%Y-%m-%d'))) 
+
+            if self.pse_response.status_code == 200:
+                return json.loads(self.pse_response.text)
+            else:
                 return False
-    
-            return csv.reader(self.pse_response.text.splitlines(), delimiter=";")
-    
+
         except requests.exceptions.ReadTimeout:
             self.pse_response = None
+
     
-    async def csv_to_day_raw(self, dday: int) -> list:
-        """Transform csv to sensor"""
+    async def json_to_day_raw(self, dday: int) -> list:
+        """Transform json to sensor"""
        
-        csv_reader = await self.sday(dday)
-        if csv_reader: 
-            now = datetime.now()
-            now = now.replace(minute=0).replace(second=0) + timedelta(days=dday)
+        json_data = await self.sday(dday)
+        if json_data: 
             data_pse = []
-            for row in csv_reader:
-                if not row[1].isnumeric():
-                    continue
-                i = {
-                    "start" : now.replace(hour=int(row[1])-1).strftime('%Y-%m-%d %H:%M:%S'),
-                    "tariff" : float(row[2].replace(',','.')),
-                    "low_price" : False,
-                }
-                data_pse.append(i)
+            for item in json_data["value"]:
+                if item['udtczas_oreb'].replace(' - ',':').split(':')[1] == "00":
+                    i = {
+                        "start" : item['doba'] + " " + item['udtczas_oreb'].split(' - ')[0], # + ":00",
+                        "tariff" : float(item['rce_pln']),
+                        "low_price" : False,
+                    }
+                    data_pse.append(i)
             if not data_pse:
                 _LOGGER.debug("No data for a day, unable to set attrs")
 
@@ -159,11 +158,11 @@ class RCESensor(SensorEntity):
 
     async def full_update(self):
         self.pse_response = None
-        today = await self.csv_to_day_raw(0)
+        today = await self.json_to_day_raw(0)
         self._update(today)
         self._attr_native_value = self._update_current_price(today)
         self._low_price_hours(today)
-        tomorrow = await self.csv_to_day_raw(1)
+        tomorrow = await self.json_to_day_raw(1)
         self._attr_extra_state_attributes = {
             "average": self._average,
             "off_peak_1": self._off_peak_1,
