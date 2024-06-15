@@ -1,12 +1,22 @@
 {
-    "title": "PSE - Rynkowa Cena Energii (RCE)",
+    "title": "PSE RCE Integration",
     "config": {
         "step": {
             "user": {
-                "description": "Do you want to add PSE: RCE integration",
-                "title": "PSE: RCE integration"
+                "description": "Do you want to add PSE RCE integration",
+                "title": "PSE RCE Sensor"
             }
         }
     },
-    "title": "PSE: RCE Sensor"
+    "options": {
+        "step": {
+            "init": {
+                "description": "These values allow tweaking the PSE RCE Sensor result. Please refer to the documentation if a field is unclear.",
+                "data": {
+                    "custom_peak_range": "Custom Peak Hours Range [from-to], e.g. 10-16",
+                    "low_price_cutoff": "Low Price CUTOFF Percent"
+                }
+            }
+        }
+    } 
 }
