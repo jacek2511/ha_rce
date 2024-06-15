@@ -7,5 +7,16 @@
                 "title": "PSE: RCE"
             }
         }
-    }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "description": "Poniższe parametry umożliwiają dostosownie wyniku czujnika PSE RCE. Jeżeli któryś parametr jest niejasny prosimy zapoznać się z dokumentacją.",
+                "data": {
+                    "custom_peak_range": "Niestandardowy zakres godzin szczytu [od-do], np.: 10-16",
+                    "low_price_cutoff": "Low Price CUTOFF Percent"
+                }
+            }
+        }
+    } 
 }
