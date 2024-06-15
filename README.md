@@ -1,4 +1,4 @@
-[![HACS Default][hacs_shield]][hacs]
+<!-- [![HACS Default][hacs_shield]][hacs]  -->
 [![GitHub Latest Release][releases_shield]][latest_release]
 [![GitHub All Releases][downloads_total_shield]][releases]
 
