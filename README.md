@@ -1,9 +1,18 @@
-# homeassistant-rce
-Rynkowa cena energii elektrycznej (RCE)
+[![HACS Default][hacs_shield]][hacs]
+[![GitHub Latest Release][releases_shield]][latest_release]
+[![GitHub All Releases][downloads_total_shield]][releases]
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/custom-components/hacs) 
-[![usage_badge](https://img.shields.io/badge/dynamic/json?style=for-the-badge&label=Usage&query=rce.total&url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json)](https://analytics.home-assistant.io) 
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=rce)  
+[hacs_shield]: https://img.shields.io/static/v1.svg?label=HACS&message=Default&style=popout&color=green&labelColor=41bdf5&logo=HomeAssistantCommunityStore&logoColor=white
+[hacs]: https://hacs.xyz/docs/default_repositories
+
+[latest_release]: https://github.com/jacek2511/ha_rce/releases/latest
+[releases_shield]: https://img.shields.io/github/release/jacek2511/ha_rce.svg?style=popout
+
+[releases]: https://github.com/jacek2511/ha_rce/releases
+[downloads_total_shield]: https://img.shields.io/github/downloads/jacek2511/ha_rce/total
+
+# homeassistant-rce
+**Rynkowa cena energii elektrycznej (RCE)**
 
 This is an integration between Home Assistant and PSE RCE
 
@@ -39,6 +48,9 @@ series:
       });</code></pre>
 
 # Install
+
+### Using [HACS](https://hacs.xyz/) (recommended)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jacek2511&repository=ha_rce&category=Integration)
 
 You can install the plugin via HACS using the following steps
 
