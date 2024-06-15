@@ -1,7 +1,7 @@
 {
   "domain": "rce",
   "name": "RCE",
-  "codeowners": ["@PiKuS"],
+  "codeowners": ["@JaCeK2511"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/jacek2511/ha_rce/",
