@@ -80,11 +80,9 @@ class PSESensorOptionFlow(OptionsFlow):
                     ): str,
                     vol.Optional(
                         CONF_LOW_PRICE_CUTOFF,
-                        description={
-                            "suggested_value": self.config_entry.options.get(
-                                CONF_LOW_PRICE_CUTOFF, DEFAULT_LOW_PRICE_CUTOFF
-                            )
-                        },
+                        default=self.config_entry.options.get(
+                            CONF_LOW_PRICE_CUTOFF, DEFAULT_LOW_PRICE_CUTOFF
+                        ),
                     ): vol.Coerce(int),
                 }
             ),
