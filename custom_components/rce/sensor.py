@@ -66,14 +66,14 @@ class RCESensor(SensorEntity):
         price = []
         price = (([item['tariff'] for item in day]))
 
-        self._average = mean(price)
+        self._average = round(mean(price), 2)
         self._min = min(price)
         self._max = max(price)
-        self._off_peak_1 = mean(price[0:8])
-        self._off_peak_2 = mean(price[20:])
-        self._peak = mean(price[8:20])
-        self._mean = median(price)
-        self._custom_peak = mean(price[int(self.custom_peak.split("-")[0]):int(self.custom_peak.split("-")[1])])
+        self._off_peak_1 = round(mean(price[0:8]), 2)
+        self._off_peak_2 = round(mean(price[20:]), 2)
+        self._peak = round(mean(price[8:20]), 2)
+        self._mean = round(median(price), 2)
+        self._custom_peak = round(mean(price[int(self.custom_peak.split("-")[0]):int(self.custom_peak.split("-")[1])]), 2)
 
     def _low_price_hours(self, day: dict):
 
