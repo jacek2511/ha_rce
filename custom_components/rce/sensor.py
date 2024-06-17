@@ -46,7 +46,10 @@ class RCESensor(SensorEntity):
         self.last_network_pull = datetime(year=2000, month=1, day=1, tzinfo=timezone.utc)
 
         # Values for the day
-        self._average = None
+        self._today = None
+        self._tomorrow = None
+        self._next_price = None
+         self._average = None
         self._max = None
         self._min = None
         self._mean = None
@@ -76,7 +79,6 @@ class RCESensor(SensorEntity):
         self._custom_peak = round(mean(price[int(self.custom_peak.split("-")[0]):int(self.custom_peak.split("-")[1])]), 2)
 
     def _low_price_hours(self, day: dict):
-
         price = []
         price = (([item['tariff'] for item in day]))
         for i, price_hour in enumerate(price):
@@ -115,11 +117,41 @@ class RCESensor(SensorEntity):
         """Return the unit of measurement this sensor expresses itself in."""
         return "%s/%s" % (DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE)
 
+    @property
+    def extra_state_attributes(self):
+        if self._today:
+            attrs =  {
+                "next_price": self._update_next_price(self._today, self._tomorrow),
+                "average": round(self._average, 2),
+                "off_peak_1": round(self._off_peak_1, 2),
+                "off_peak_2": round(self._off_peak_2,2),
+                "peak": round(self._peak, 2),
+                "custom_peak": round(self._custom_peak, 2),
+                "min": self._min,
+                "max": self._max,
+                "mean": round(self._mean, 2),
+                "unit": self.unit,
+                "currency": DEFAULT_CURRENCY, 
+                "custom_peak_range" : self.custom_peak,
+                "low_price_cutoff": self.low_price_cutoff * 100,
+                "today": self._today,
+                "tomorrow": self._tomorrow,
+            }
+            return attrs
+    
     def _update_current_price(self, today) -> None:
         """update the current price (price this hour)"""
         hour = int(datetime.now().strftime('%H'))
         return today[hour]['tariff']
 
+    def _update_next_price(self, today, tomorrow) -> None:
+        """update the next price (price next hour)"""
+        if today:
+            hour = int(datetime.now().strftime('%H'))
+            if hour < 23:
+              return today[hour + 1]['tariff']
+            else:
+              return tomorrow[0]['tariff']
     
     async def sday(self, dday: int):
         """fetch day data"""
@@ -158,27 +190,11 @@ class RCESensor(SensorEntity):
 
     async def full_update(self):
         self.pse_response = None
-        today = await self.json_to_day_raw(0)
-        self._update(today)
-        self._attr_native_value = self._update_current_price(today)
-        self._low_price_hours(today)
-        tomorrow = await self.json_to_day_raw(1)
-        self._attr_extra_state_attributes = {
-            "average": self._average,
-            "off_peak_1": self._off_peak_1,
-            "off_peak_2": self._off_peak_2,
-            "peak": self._peak,
-            "custom_peak": self._custom_peak,
-            "min": self._min,
-            "max": self._max,
-            "mean": self._mean,
-            "unit": self.unit,
-            "currency": DEFAULT_CURRENCY, 
-            "custom_peak_range" : self.custom_peak,
-            "low_price_cutoff": self.low_price_cutoff * 100,
-            "today": today,
-            "tomorrow": tomorrow,
-        }
+        self._today = await self.json_to_day_raw(0)
+        self._update(self._today)
+        self._attr_native_value = self._update_current_price(self._today)
+        self._low_price_hours(self._today)
+        self._tomorrow = await self.json_to_day_raw(1)
         return
 
     async def async_update(self):
@@ -190,9 +206,9 @@ class RCESensor(SensorEntity):
             return
         if now.strftime('%H') == self.last_network_pull.strftime('%H'):
             return
-        today_price = self._attr_extra_state_attributes["today"]
-        self._attr_native_value = self._update_current_price(today_price)
+        self._attr_native_value = self._update_current_price(self.extra_state_attributes["today"])
         self.last_network_pull = now
-        if not self._attr_extra_state_attributes["tomorrow"] and int(now.strftime('%H')) > 14: 
+        if not self.extra_state_attributes["tomorrow"] and int(now.strftime('%H')) > 14: 
             await self.full_update()
             self.last_network_pull = now
+        return
