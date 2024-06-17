@@ -5,6 +5,7 @@
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/jacek2511/ha_rce/",
+  "issue_tracker": "https://github.com/jacek2511/ha_rce//issues",
   "iot_class": "local_polling",
   "requirements": [],
   "version": "1.0.1"
