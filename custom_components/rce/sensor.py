@@ -49,7 +49,7 @@ class RCESensor(SensorEntity):
         self._today = None
         self._tomorrow = None
         self._next_price = None
-         self._average = None
+        self._average = None
         self._max = None
         self._min = None
         self._mean = None
