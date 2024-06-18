@@ -1,8 +1,8 @@
 <!-- [![HACS Default][hacs_shield]][hacs]  -->
-[![GitHub Latest Release][releases_shield]][latest_release]
-[![License][license-shield]](LICENSE)
-[![GitHub All Releases][downloads_total_shield]][releases]
+[![GitHub Latest Release][releases_shield]][latest_release] [![License][license-shield]](LICENSE) [![GitHub All Releases][downloads_total_shield]][releases] [![GH-last-commit][latest_commit]][commits]
+
 <!-- [![usage_badge](https://img.shields.io/badge/dynamic/json?label=Usage&query=ha_rce.total&url=https://analytics.home-assistant.io/custom_integrations.json)](https://analytics.home-assistant.io) -->
+
 
 # homeassistant-rce
 **Rynkowa cena energii elektrycznej (RCE)**
@@ -60,3 +60,5 @@ You can install the plugin via HACS using the following steps
 [releases]: https://github.com/jacek2511/ha_rce/releases
 [downloads_total_shield]: https://img.shields.io/github/downloads/jacek2511/ha_rce/total
 [license-shield]: https://img.shields.io/github/license/jacek2511/ha_rce
+[latest_commit]: https://img.shields.io/github/last-commit/jacek2511/ha_rce.svg?style=flat-square
+[commits]: https://github.com/jack2511/ha_rce/commits/master
