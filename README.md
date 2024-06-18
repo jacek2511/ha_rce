@@ -1,6 +1,4 @@
-<!-- [![HACS Default][hacs_shield]][hacs]  -->
-[![GitHub Latest Release][releases_shield]][latest_release] [![License][license-shield]](LICENSE) [![GitHub All Releases][downloads_total_shield]][releases] [![GH-last-commit][latest_commit]][commits]
-
+[![GitHub Latest Release][releases_shield]][latest_release] [![License][license-shield]](LICENSE) [![GitHub All Releases][downloads_total_shield]][releases] [![GH-last-commit][latest_commit]][commits] [![HACS][hacsbadge]][hacs]
 <!-- [![usage_badge](https://img.shields.io/badge/dynamic/json?label=Usage&query=ha_rce.total&url=https://analytics.home-assistant.io/custom_integrations.json)](https://analytics.home-assistant.io) -->
 
 
@@ -53,8 +51,8 @@ You can install the plugin via HACS using the following steps
 4. Click "Custom repositories"
 5. Add https://github.com/jacek2511/ha_rce/ and a category of your choice
 
-[hacs_shield]: https://img.shields.io/static/v1.svg?label=HACS&message=Default&style=popout&color=green&labelColor=41bdf5&logo=HomeAssistantCommunityStore&logoColor=white
-[hacs]: https://hacs.xyz/docs/default_repositories
+[hacs]: https://hacs.xyz
+[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg
 [latest_release]: https://github.com/jacek2511/ha_rce/releases/latest
 [releases_shield]: https://img.shields.io/github/release/jacek2511/ha_rce.svg?style=popout
 [releases]: https://github.com/jacek2511/ha_rce/releases
