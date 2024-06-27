@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceEntryType
 
 from datetime import datetime, timedelta, timezone
-from .const import DOMAIN, _LOGGER, SCAN_INTERVAL, DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE, CONF_CUSTOM_PEAK_HOURS_RANGE, CONF_LOW_PRICE_CUTOFF, DEFAULT_CUSTOM_PEAK_HOURS_RANGE, DEFAULT_LOW_PRICE_CUTOFF
+from .const import DOMAIN, _LOGGER, SCAN_INTERVAL, DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE, CONF_CUSTOM_PEAK_HOURS_RANGE, CONF_LOW_PRICE_CUTOFF, DEFAULT_CUSTOM_PEAK_HOURS_RANGE, DEFAULT_LOW_PRICE_CUTOFF, CONF_NUMBER_OF_CHEAPEST_HOURS, DEFAULT_NUMBER_OF_CHEAPEST_HOURS, CONF_PRICE_MODE, DEFAULT_PRICE_MODE 
 
 
 URL = "https://api.raporty.pse.pl/api/rce-pln?$filter=doba eq '{day}'"
@@ -26,8 +26,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: config_entries.Co
         custom_peak = config_entry.options.get(CONF_CUSTOM_PEAK_HOURS_RANGE, DEFAULT_CUSTOM_PEAK_HOURS_RANGE)
     if config_entry.options.get(CONF_LOW_PRICE_CUTOFF):
         low_price_cutoff = config_entry.options.get(CONF_LOW_PRICE_CUTOFF, DEFAULT_LOW_PRICE_CUTOFF) / 100
+    if config_entry.options.get(CONF_NUMBER_OF_CHEAPEST_HOURS):
+        cheapest_hours = config_entry.options.get(CONF_NUMBER_OF_CHEAPEST_HOURS, DEFAULT_NUMBER_OF_CHEAPEST_HOURS)
+    if config_entry.options.get(CONF_PRICE_MODE):
+        price_mode = config_entry.options.get(CONF_PRICE_MODE, DEFAULT_PRICE_MODE)
 
-    async_add_entities([RCESensor(custom_peak, low_price_cutoff)])
+    async_add_entities([RCESensor(custom_peak, low_price_cutoff, cheapest_hours, price_mode)])
 
 
 class RCESensor(SensorEntity):
@@ -56,9 +60,12 @@ class RCESensor(SensorEntity):
         self._off_peak_1 = None
         self._off_peak_2 = None
         self._peak = None
+        self._min_average = None
         self._custom_peak = None
         self.custom_peak = custom_peak
         self.low_price_cutoff = low_price_cutoff
+        self.cheapest_hours = cheapest_hours
+        self.price_mode = price_mode
 
     def _update(self, day: dict):
         """Set attrs"""
@@ -81,9 +88,31 @@ class RCESensor(SensorEntity):
     def _low_price_hours(self, day: dict):
         price = []
         price = (([item['tariff'] for item in day]))
-        for i, price_hour in enumerate(price):
-            if price_hour < self._custom_peak * self.low_price_cutoff:
-                day[i]['low_price'] = True
+# MODE: LOW PRICE CUTOFF
+        if self.price_mode == 'LOW PRICE CUTOFF':
+            for i, price_hour in enumerate(price):
+                if price_hour < self._custom_peak * self.low_price_cutoff:
+                    day[i]['low_price'] = True
+
+# MODE: CHEAPEST CONSECUTIVE HOURS
+        elif self.price_mode == 'CHEAPEST CONSECUTIVE HOURS':
+            self._min_average = float('inf')
+            min_average_index = 0
+            for i in range(len(price)):
+                current_average = mean(price[i:i + self.cheapest_hours])
+                if current_average < self._min_average:
+                    self._min_average = round(current_average, 2)
+                    min_average_index = i
+                if i + self.cheapest_hours == len(price):
+                    for k in range (self.cheapest_hours): 
+                        day[min_average_index + k]['low_price'] = True
+                    return
+# MODE: CHEAPEST HOURS (NOT CONSECUTIVE)
+        elif self.price_mode == 'CHEAPEST HOURS (NOT CONSECUTIVE)':
+            day_copy = sorted(day, key=lambda d: d['tariff'])
+            for k in range (self.cheapest_hours): 
+                m = day_copy[k]['start'][-5:-3]
+                day[int(m)]['low_price'] = True
         return
     
     @property
@@ -130,6 +159,7 @@ class RCESensor(SensorEntity):
                 "min": self._min,
                 "max": self._max,
                 "mean": round(self._mean, 2),
+                "min_average": self._min_average,
                 "unit": self.unit,
                 "currency": DEFAULT_CURRENCY, 
                 "custom_peak_range" : self.custom_peak,
