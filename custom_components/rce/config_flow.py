@@ -36,7 +36,7 @@ class PSESensorConfigFlow(ConfigFlow, domain=DOMAIN):
 
     # The schema version of the entries that it creates
     # Home Assistant will call your migrate method if the version changes
-    VERSION = 1
+    VERSION = 2
 
     @staticmethod
     @callback
