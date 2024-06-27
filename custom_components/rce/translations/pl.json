@@ -15,6 +15,8 @@
                 "data": {
                     "custom_peak_range": "Niestandardowy zakres godzin szczytu [od-do], np.: 10-16",
                     "low_price_cutoff": "Low Price CUTOFF Percent"
+                    "number_of_cheapest_hours": "Liczba następujących po sobie najtańszych godzin",
+                    "cheapest_price_mode": "Wybór trybu wyznaczania najtańszych godzin"
                 }
             }
         }
