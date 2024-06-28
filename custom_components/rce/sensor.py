@@ -41,7 +41,7 @@ class RCESensor(SensorEntity):
     _attr_state_class = SensorStateClass.TOTAL
     _attr_has_entity_name = True
 
-    def __init__(self, custom_peak: str, low_price_cutoff: int) -> None:
+    def __init__(self, custom_peak: str, low_price_cutoff: int, number_of_cheapest_hours: int, cheapest_price_mode: str) -> None:
         """Initialize Forecast.Solar sensor."""
         _LOGGER.info("RCE sensor")
         super().__init__()
