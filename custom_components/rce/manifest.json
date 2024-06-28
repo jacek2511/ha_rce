@@ -8,5 +8,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/jacek2511/ha_rce//issues",
   "requirements": [],
-  "version": "1.0.4"
+  "version": "1.0.6"
 }
