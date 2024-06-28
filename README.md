@@ -51,6 +51,39 @@ You can install the plugin via HACS using the following steps
 4. Click "Custom repositories"
 5. Add https://github.com/jacek2511/ha_rce/ and a category of your choice
 
+# Configuration
+All integration settings are available in the options in the integration configuration panel.
+![image](https://github.com/jacek2511/ha_rce/assets/112733566/f9e834b5-1322-435d-9ac3-e15b3b187cb9)
+
+# Available components
+
+### Sensor
+* rynkowa_cena_energii_elektrycznej - current price of energy
+
+```
+  attributes: 
+    next_price - energy price in the next hour
+    average - average daily energy price
+    off_peak_1 - average energy price from 00:00 to 08:00
+    off_peak_2 - average energy price from 20:00 to 00:00
+    peak - average energy price from 08:00 to 20:00
+    min_average - minimum average energy price in the range of x consecutive hours; where x is configurable in options
+    custom_peak - average energy price over the range of hours defined by custom_peak_range
+    min - minimum daily energy price
+    max - maximum daily energy price
+    mean - median daily energy price
+    custom_peak_range - configurable range of hours for which the custom_peak attribute is calculated
+    low_price_cutoff - percentage of average price to set the low price attribute (low_price = hour_price < average * low_price_cutoff)
+    today - today's hourly prices in the format
+      - start: 2024-06-28 00:00
+        tariff: 604.2
+        low_price: false
+      - start: 2024-06-28 01:00
+        tariff: 488.93
+        low_price: false
+    tomorrow - tomorrow's hourly prices
+  ```
+
 [hacs]: https://hacs.xyz
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg
 [latest_release]: https://github.com/jacek2511/ha_rce/releases/latest
