@@ -58,7 +58,7 @@ All integration settings are available in the options in the integration configu
 # Available components
 
 ### Sensor
-* rynkowa_cena_energii_elektrycznej - current price of energy
+* rynkowa_cena_energii_elektrycznej - current energy price
 
 ```
   attributes: 
