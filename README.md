@@ -36,6 +36,13 @@ series:
     data_generator: |
       return entity.attributes.today.map((start, index) => {
         return [new Date(start["start"]).getTime(), entity.attributes.today[index]['tariff']];
+  - entity: sensor.rynkowa_cena_energii_elektrycznej
+    type: column
+    name: RCE jutro
+    float_precision: 2
+    data_generator: |
+      return entity.attributes.today.map((start, index) => {
+        return [new Date(start["start"]).getTime(), entity.attributes.tomorrow[index]['tariff']];
       });</code></pre>
 
 # Install
