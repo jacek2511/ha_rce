@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 import requests
-from statistics import mean, median 
+from statistics import mean, median
 from zoneinfo import ZoneInfo
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceEntryType
 
 from datetime import datetime, timedelta, timezone
-from .const import DOMAIN, _LOGGER, SCAN_INTERVAL, DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE, CONF_CUSTOM_PEAK_HOURS_RANGE, CONF_LOW_PRICE_CUTOFF, DEFAULT_CUSTOM_PEAK_HOURS_RANGE, DEFAULT_LOW_PRICE_CUTOFF, CONF_NUMBER_OF_CHEAPEST_HOURS, DEFAULT_NUMBER_OF_CHEAPEST_HOURS, CONF_PRICE_MODE, DEFAULT_PRICE_MODE 
+from .const import DOMAIN, _LOGGER, SCAN_INTERVAL, DEFAULT_CURRENCY, DEFAULT_PRICE_TYPE, CONF_CUSTOM_PEAK_HOURS_RANGE, CONF_LOW_PRICE_CUTOFF, DEFAULT_CUSTOM_PEAK_HOURS_RANGE, DEFAULT_LOW_PRICE_CUTOFF, CONF_NUMBER_OF_CHEAPEST_HOURS, DEFAULT_NUMBER_OF_CHEAPEST_HOURS, CONF_PRICE_MODE, DEFAULT_PRICE_MODE
 
 
 URL = "https://api.raporty.pse.pl/api/rce-pln?$filter=doba eq '{day}'"
@@ -104,17 +104,17 @@ class RCESensor(SensorEntity):
                     self._min_average = round(current_average, 2)
                     min_average_index = i
                 if i + self.cheapest_hours == len(price):
-                    for k in range (self.cheapest_hours): 
+                    for k in range (self.cheapest_hours):
                         day[min_average_index + k]['low_price'] = True
                     return
 # MODE: CHEAPEST HOURS (NOT CONSECUTIVE)
         elif self.price_mode == 'CHEAPEST HOURS (NOT CONSECUTIVE)':
             day_copy = sorted(day, key=lambda d: d['tariff'])
-            for k in range (self.cheapest_hours): 
+            for k in range (self.cheapest_hours):
                 m = day_copy[k]['start'][-5:-3]
                 day[int(m)]['low_price'] = True
         return
-    
+
     @property
     def name(self) -> str:
         return "Rynkowa Cena Energi Elektrycznej"
@@ -161,33 +161,33 @@ class RCESensor(SensorEntity):
                 "mean": round(self._mean, 2),
                 "min_average": self._min_average,
                 "unit": self.unit,
-                "currency": DEFAULT_CURRENCY, 
+                "currency": DEFAULT_CURRENCY,
                 "custom_peak_range" : self.custom_peak,
                 "low_price_cutoff": self.low_price_cutoff * 100,
                 "today": self._today,
                 "tomorrow": self._tomorrow,
             }
             return attrs
-    
+
     def _update_current_price(self, today) -> None:
         """update the current price (price this hour)"""
-        hour = int(datetime.now().strftime('%H'))
+        hour = int(self.now_zoned().strftime('%H'))
         return today[hour]['tariff']
 
     def _update_next_price(self, today, tomorrow) -> None:
         """update the next price (price next hour)"""
         if today:
-            hour = int(datetime.now().strftime('%H'))
+            hour = int(self.now_zoned().strftime('%H'))
             if hour < 23:
               return today[hour + 1]['tariff']
             else:
               return tomorrow[0]['tariff']
-    
+
     async def sday(self, dday: int):
         """fetch day data"""
-        now = datetime.now() + timedelta(days=dday)
+        now = self.now_zoned() + timedelta(days=dday)
         try:
-            self.pse_response = await self.hass.async_add_executor_job(requests.get, URL.format(day=now.strftime('%Y-%m-%d'))) 
+            self.pse_response = await self.hass.async_add_executor_job(requests.get, URL.format(day=now.strftime('%Y-%m-%d')))
 
             if self.pse_response.status_code == 200:
                 return json.loads(self.pse_response.text)
@@ -197,12 +197,12 @@ class RCESensor(SensorEntity):
         except requests.exceptions.ReadTimeout:
             self.pse_response = None
 
-    
+
     async def json_to_day_raw(self, dday: int) -> list:
         """Transform json to sensor"""
-       
+
         json_data = await self.sday(dday)
-        if json_data: 
+        if json_data:
             data_pse = []
             for item in json_data["value"]:
                 if item['udtczas_oreb'].replace(' - ',':').split(':')[1] == "00":
@@ -229,7 +229,7 @@ class RCESensor(SensorEntity):
 
     async def async_update(self):
         """Retrieve latest state."""
-        now = datetime.now(ZoneInfo(self.hass.config.time_zone))
+        now = self.now_zoned()
         if now.strftime('%d%Y') != self.last_network_pull.strftime('%d%Y'):
             await self.full_update()
             self.last_network_pull = now
@@ -238,7 +238,10 @@ class RCESensor(SensorEntity):
             return
         self._attr_native_value = self._update_current_price(self.extra_state_attributes["today"])
         self.last_network_pull = now
-        if not self.extra_state_attributes["tomorrow"] and int(now.strftime('%H')) > 14: 
+        if not self.extra_state_attributes["tomorrow"] and int(now.strftime('%H')) > 14:
             await self.full_update()
             self.last_network_pull = now
         return
+
+    def now_zoned(self) -> datetime:
+        return datetime.now(ZoneInfo(self.hass.config.time_zone))
