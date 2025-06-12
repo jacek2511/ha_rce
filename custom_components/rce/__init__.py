@@ -2,6 +2,7 @@
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 
 from .const import DOMAIN, _LOGGER
 
@@ -15,17 +16,13 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up RCE integration."""
     _LOGGER.info("RCE-async_setup_entry " + str(entry))
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, "sensor")
-    )
+    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     _LOGGER.info("RCE-async_unload_entry remove entities")
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_unload(entry, "sensor")
-    )
+    await hass.config_entries.async_forward_entry_unload(entry, Platform.SENSOR)
     return True
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
