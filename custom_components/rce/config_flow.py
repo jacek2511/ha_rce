@@ -22,12 +22,15 @@ from .const import (
     CONF_LOW_PRICE_CUTOFF,
     CONF_NUMBER_OF_CHEAPEST_HOURS,
     CONF_PRICE_MODE,
+    CONF_NEGATIVE_PRICES,
     DEFAULT_CUSTOM_PEAK_HOURS_RANGE,
     DEFAULT_LOW_PRICE_CUTOFF,
     DEFAULT_NUMBER_OF_CHEAPEST_HOURS,
     DEFAULT_PRICE_MODE,
-    PRICE_MODES,
+    DEFAULT_NEGATIVE_PRICES,
+    PRICE_MODES,   
 )
+
 
 RE_HOURS_RANGE = re.compile(r"^/d{1,2}-/d{1,2}$")
 
@@ -96,11 +99,17 @@ class PSESensorOptionFlow(OptionsFlow):
                         ),
                     ): vol.Coerce(int),
                     vol.Optional(
-                       CONF_PRICE_MODE,
-                       default=self.config_entry.options.get(
-                           CONF_PRICE_MODE, DEFAULT_PRICE_MODE
+                        CONF_PRICE_MODE,
+                        default=self.config_entry.options.get(
+                            CONF_PRICE_MODE, DEFAULT_PRICE_MODE
                         ),
                     ): vol.In(PRICE_MODES), 
+                    vol.Optional(
+                        CONF_NEGATIVE_PRICES,
+                        default=self.config_entry.options.get(
+                            CONF_NEGATIVE_PRICES, DEFAULT_NEGATIVE_PRICES
+                        ),
+                    ): bool, 
                 }
             ),
             errors=errors,
