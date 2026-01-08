@@ -16,7 +16,8 @@
                     "custom_peak_range": "Custom Peak Hours Range [from-to], e.g. 10-16",
                     "low_price_cutoff": "Low Price CUTOFF Percent",
                     "number_of_cheapest_hours": "Number of consecutive cheapest hours",
-                    "cheapest_price_mode": "Selecting the mode for determining the cheapest hours"
+                    "cheapest_price_mode": "Selecting the mode for determining the cheapest hours",
+                    "negative_prices": "Mark negative prices as low_price"
                 }
             }
         }
