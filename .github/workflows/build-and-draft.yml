@@ -1,35 +1,40 @@
-name: Build and Create Draft Release
+name: Create Draft Release
 
 on:
   push:
     tags:
-      - 'v*'   # Tagi zaczynające się od v (np. v1.0)
-      - '[0-9]*' # Tagi zaczynające się od dowolnej cyfry (np. 2.5.1)
+      - 'v*'
+      - '[0-9]*'
+
+permissions: {}
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  release:
+    name: "Create Draft"
+    runs-on: "ubuntu-latest"
     permissions:
-      contents: write # Wymagane, aby Action mogło stworzyć release
-
+      contents: write
     steps:
-      - name: Checkout kodu
-        uses: actions/checkout@v4
+      - name: "Checkout the repository"
+        uses: "actions/checkout@v4"
 
-      # TUTAJ KROK TWOJEJ KOMPILACJI (przykład dla ZIP)
-      - name: Przygotowanie plików (Assetów)
+      - name: "Adjust version number"
+        shell: "bash"
         run: |
-          mkdir build
-          echo "To jest gotowy produkt" > build/instrukcja.txt
-          zip -r release-package.zip build/
+          # Pobieramy nazwę tagu z referencji git (np. v1.2.3)
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          yq -i -o json ".version=\"$TAG_NAME\"" \
+            "${{ github.workspace }}/custom_components/rce/manifest.json"
 
-      - name: Tworzenie Draftu Release
-        uses: softprops/action-gh-release@v2
+      - name: "ZIP the integration directory"
+        shell: "bash"
+        run: |
+          cd "${{ github.workspace }}/custom_components/rce"
+          zip rce.zip -r ./
+
+      - name: "Upload the ZIP file to the draft"
+        uses: softprops/action-gh-release@v2.2.1
         with:
-          draft: true  # KLUCZOWE: to sprawia, że release nie jest publiczny
-          prerelease: false
-          files: |
-            release-package.zip
-            inne-pliki-jesli-masz.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          files: ${{ github.workspace }}/custom_components/rce/rce.zip
+          draft: true  # To kluczowe ustawienie - release nie będzie publiczny
+          tag_name: ${{ github.ref_name }} # Używa nazwy pushniętego tagu
