@@ -100,9 +100,7 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
             raw_tomorrow = await self._fetch_day_data(1)
             if raw_tomorrow:
                 prices_tomorrow = [float(x["rce_pln"]) for x in raw_tomorrow]
-
-        # --- NOWA LOGIKA: AGREGACJA DO 1H ---
-        # Jeśli tryb to nie 15M (czyli 1h), uśredniamy co 4 wartości
+                
         if res != RESOLUTION_15M and len(prices_today) == 96:
             hourly_prices = []
             for i in range(0, 96, 4):
@@ -116,7 +114,6 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
                 avg_h = mean(prices_tomorrow[i:i+4])
                 hourly_prices_tom.extend([round(avg_h, 2)] * 4)
             prices_tomorrow = hourly_prices_tom
-        # --- KONIEC LOGIKI AGREGACJI ---
 
         full_mask = [False] * len(prices_today)
         
