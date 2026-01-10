@@ -26,7 +26,6 @@ from .const import (
 )
 
 def validate_hour_range(value: str) -> bool:
-    """Sprawdza czy format to HH-HH (np. 08-16) i czy godziny są poprawne."""
     pattern = r"^\d{1,2}-\d{1,2}$"
     if not re.match(pattern, value):
         return False
@@ -39,11 +38,9 @@ def validate_hour_range(value: str) -> bool:
 
 
 class RCEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for RCE."""
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        """Krok inicjalny tworzenia integracji."""
         if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
 
@@ -62,14 +59,11 @@ class RCEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class RCEOptionsFlowHandler(config_entries.OptionsFlow):
-    """Obsługa opcji konfiguracji (menu Opcje w HA)."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Inicjalizacja przepływu opcji."""
         super().__init__()
 
     async def async_step_init(self, user_input=None):
-        """Zarządzanie opcjami na jednym ekranie."""
         errors = {}
         options = self.config_entry.options
 
