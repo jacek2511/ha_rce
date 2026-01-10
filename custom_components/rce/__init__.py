@@ -13,7 +13,6 @@ from .const import (
     CONF_PRICE_MODE
 )
 
-# Definiujemy platformy, które obsługuje ta integracja
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
@@ -23,7 +22,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up integration via YAML (not supported, but registers services)."""
     
     async def set_mode(call):
-        """Usługa do szybkiej zmiany trybu pracy (np. z przycisku)."""
         mode = call.data.get("mode")
         price_mode = call.data.get("price_mode")
         
@@ -50,18 +48,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up RCE from a config entry."""
     _LOGGER.info("Setting up RCE config entry: %s", entry.entry_id)
 
-    # Rejestracja platform (sensor i binary_sensor)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Rejestracja słuchacza aktualizacji opcji
-    # Dzięki temu po kliknięciu "Zapisz" w opcjach lub użyciu usługi, 
-    # sensory zostaną przeładowane z nowymi ustawieniami.
     entry.async_on_unload(entry.add_update_listener(update_listener))
 
     return True
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Obsługa aktualizacji opcji bez restartu HA."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
