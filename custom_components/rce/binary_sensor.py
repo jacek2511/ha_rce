@@ -43,7 +43,7 @@ class RCECheapNowBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if current hour/slot is marked as cheap in the mask."""
-        mask = self.coordinator.data.get("cheap_mask", [])
+        mask = self.coordinator.data.get("cheap_mask_today", [])
         if not mask:
             return None
 
