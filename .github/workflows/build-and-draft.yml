@@ -1,29 +1,38 @@
-name: Create Draft Release
+name: Manual or Tag Draft Release
 
 on:
   push:
     tags:
       - 'v*'
       - '[0-9]*'
+  workflow_dispatch: # To dodaje przycisk w przeglądarce
+    inputs:
+      version:
+        description: 'Wpisz wersję (np. v1.2.3)'
+        required: true
+        default: 'manual-test'
 
-permissions: {}
+permissions:
+  contents: write
 
 jobs:
   release:
-    name: "Create Draft"
-    runs-on: "ubuntu-latest"
-    permissions:
-      contents: write
+    runs-on: ubuntu-latest
     steps:
       - name: "Checkout the repository"
         uses: "actions/checkout@v4"
 
-      - name: "Adjust version number"
-        shell: "bash"
+      - name: "Set version"
+        shell: bash
         run: |
-          # Pobieramy nazwę tagu z referencji git (np. v1.2.3)
+          # Jeśli uruchomione ręcznie, weź input. Jeśli tagiem, weź nazwę tagu.
+          IF_MANUAL="${{ github.event.inputs.version }}"
           TAG_NAME=${GITHUB_REF#refs/tags/}
-          yq -i -o json ".version=\"$TAG_NAME\"" \
+          SELECTED_VERSION=${IF_MANUAL:-$TAG_NAME}
+          
+          echo "VERSION=$SELECTED_VERSION" >> $GITHUB_ENV
+          
+          yq -i -o json ".version=\"$SELECTED_VERSION\"" \
             "${{ github.workspace }}/custom_components/rce/manifest.json"
 
       - name: "ZIP the integration directory"
@@ -33,8 +42,10 @@ jobs:
           zip rce.zip -r ./
 
       - name: "Upload the ZIP file to the draft"
-        uses: softprops/action-gh-release@v2.2.1
+        uses: softprops/action-gh-release@v2
         with:
           files: ${{ github.workspace }}/custom_components/rce/rce.zip
-          draft: true  # To kluczowe ustawienie - release nie będzie publiczny
-          tag_name: ${{ github.ref_name }} # Używa nazwy pushniętego tagu
+          draft: true
+          tag_name: ${{ env.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
