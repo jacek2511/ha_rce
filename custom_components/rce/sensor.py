@@ -160,7 +160,7 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
 
         return {
             "raw_today": raw_today,
-            "current_mode": price_mode,                                         
+            "price_mode": price_mode,                                         
             "operation_mode": operation_mode,
             "peak_range" : peak_range_str,
             "prices_today": prices_today,
@@ -214,7 +214,7 @@ class RCESensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         stats = self.coordinator.data.get("stats", {})
         return {
-            "current_mode": self.coordinator.data.get("current_mode"),                               
+            "price_mode": self.coordinator.data.get("price_mode"),                               
             "operation_mode": self.coordinator.data.get("operation_mode"),
             "peak_range": self.coordinator.data.get("peak_range"),                           
             "cheap_mask": self.coordinator.data.get("cheap_mask"),                                   
