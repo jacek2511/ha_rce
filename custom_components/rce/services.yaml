@@ -1,0 +1,26 @@
+set_operation_mode:
+  name: Set RCE operation mode
+  description: Change RCE calculation method or profile at runtime.
+  fields:
+    price_mode:
+      name: Main Price Mode
+      description: "Choose calculation method (e.g., LOW PRICE CUTOFF or always_on)"
+      required: false
+      selector:
+        select:
+          options:
+            - "LOW PRICE CUTOFF"
+            - "CHEAPEST CONSECUTIVE RANGES"
+            - "CHEAPEST RANGES (NOT CONSECUTIVE)"
+            - "always_on"
+    mode:
+      name: Profile (for Cutoff)
+      description: Active profile for LOW PRICE CUTOFF method.
+      required: false
+      selector:
+        select:
+          options:
+            - super_eco
+            - eco
+            - comfort
+            - aggressive
