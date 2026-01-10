@@ -1,25 +1,77 @@
 {
-    "title": "PSE - Rynkowa Cena Energii Elektrycznej (RCE)",
-    "config": {
-        "step": {
-            "user": {
-                "description": "Czy chcesz dodać integrację PSE: RCE?",
-                "title": "PSE: RCE"
-            }
-        }
+  "entity": {
+    "sensor": {
+      "electricity_market_price": { "name": "Rynkowa cena energii" },
+      "next_cheap_window": { "name": "Następne tanie okno dzisiaj" },
+      "cheapest_price_today": { "name": "Najniższa cena dzisiaj" },
+      "cheapest_hour_tomorrow": { "name": "Najtańsza godzina jutro" }
     },
-    "options": {
-        "step": {
-            "init": {
-                "description": "Poniższe parametry umożliwiają dostosownie wyniku czujnika PSE RCE. Jeżeli któryś parametr jest niejasny prosimy zapoznać się z dokumentacją.",
-                "data": {
-                    "custom_peak_range": "Niestandardowy zakres godzin szczytu [od-do], np.: 10-16",
-                    "low_price_cutoff": "Low Price CUTOFF Percent",
-                    "number_of_cheapest_hours": "Liczba nasrępujących po sobie najtańszych godzin",
-                    "cheapest_price_mode": "Wybór trybu wyznaczania najtańszych godzin",
-                    "negative_prices": "Oznacz ceny ujemne jako low_price"
-                }
-            }
+    "binary_sensor": {
+      "low_price": { "name": "Tania energia (Low Price)" }
+    }
+  },
+  "title": "PSE – Rynkowa Cena Energii Elektrycznej (RCE)",
+  "config": {
+    "step": {
+      "user": {
+        "title": "PSE RCE",
+        "description": "Czy chcesz dodać integrację Rynkowej Ceny Energii Elektrycznej (RCE)?",
+        "data": {
+          "time_resolution": "Rozdzielczo.... czasu"
         }
-    } 
+      }
+    }
+  },
+  "options": {
+    "error": {
+      "invalid_hour_range": "Nieprawidłowy format godzin. Użyj formatu HH-HH (np. 09-17), gdzie start < koniec."
+    },
+    "step": {
+      "init": {
+        "title": "Ustawienia RCE",
+        "description": "{current_status}",
+        "data": {
+          "time_resolution": "Rozdzielczość czasu",
+          "custom_peak_hours_range": "Zakres godzin pracy (np. 00-24)",
+          "price_mode": "Metoda wyznaczania taniej energii",
+          "consecutive_ranges_count": "Ciągłe okna (liczba pod rząd)",
+          "cheapest_not_consecutive_count": "Najtańsze okna (łączna liczba)",
+          "negative_prices": "Obsługa cen ujemnych",
+          "operation_mode": "Aktywny profil LOW PRICE CUTOFF",
+          "super_eco_percentile": "SUPER ECO: Percentyl cen (%)",
+          "super_eco_min_window": "SUPER ECO: Min. okno (h)",
+          "eco_percentile": "ECO: Percentyl cen (%)",
+          "eco_min_window": "ECO: Min. okno (h)",
+          "comfort_percentile": "COMFORT: Percentyl cen (%)",
+          "comfort_min_window": "COMFORT: Min. okno (h)",
+          "aggressive_percentile": "AGGRESSIVE: Percentyl cen (%)",
+          "aggressive_min_window": "AGGRESSIVE: Min. okno (h)"
+        }
+      }
+    }
+  },
+  "selector": {
+    "price_mode": {
+      "options": {
+        "LOW PRICE CUTOFF": "LOW PRICE CUTOFF (Profile)",
+        "CHEAPEST CONSECUTIVE RANGES": "Ciągły blok najtańszych godzin",
+        "CHEAPEST RANGES (NOT CONSECUTIVE)": "Najtańsze rozproszone okna",
+        "ALWAYS ON": "Zawsze włączone (Brak optymalizacji)"
+      }
+    },
+    "time_resolution": {
+      "options": {
+        "15min": "15min (RCE)",
+        "1h": "1 godzina (średnia z 4 kwadransów)"
+      }
+    },
+    "operation_mode": {
+      "options": {
+        "super_eco": "Super Eco (Maks. oszczędność)",
+        "eco": "Eco (Wysoka oszczędność)",
+        "comfort": "Komfort (Zrównoważony)",
+        "aggressive": "Agresywny (Priorytet pracy)"
+      }
+    }
+  }
 }
