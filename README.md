@@ -5,38 +5,254 @@
 # homeassistant-rce
 **Rynkowa cena energii elektrycznej (RCE)**
 
-This is an integration between Home Assistant and PSE RCE
+Overview
+This integration allows for smart device automation based on Polish RCE (Balancing Market) electricity prices published by PSE. The system analyzes price data to identify "Cheap Windows," helping you minimize energy costs.
 
-The RCE sensor provides the current price with today's and tomorrow's prices as attributes. Prices for the next day become available around 3:00 p.m.
+⚙️ Configuration & Time Resolution
+In the integration settings, you can choose how the system handles time intervals:
 
-<a href="https://github.com/RomRider/apexcharts-card">ApexCharts</a> card is recommended for visualization of the data in Home Assistant.
+15 minutes (RCE): Native resolution. Prices change every 15 minutes (96 data points per day).
 
-Example configuration for the cards
-<pre class="wp-block-code"><code>type: custom:apexcharts-card
+1 hour (Averaged): The system calculates an average price for each hour. Best for devices that should avoid frequent cycling (e.g., heat pumps, compressors).
+
+📊 Price Calculation Modes (Price Mode)
+These modes define the core logic used to identify the "Cheap Window" based on your preferences:
+
+LOW PRICE CUTOFF: The most popular mode. It calculates a price threshold based on a percentile (e.g., the cheapest 30% of the day). If the current price is below this threshold, the window is active.
+
+CHEAPEST CONSECUTIVE RANGES: Ideal for appliances that need to run uninterrupted (like a dishwasher or washing machine). It searches for the single cheapest continuous block of time of a specified length (e.g., the cheapest 3-hour block).
+
+CHEAPEST NOT CONSECUTIVE: Perfect for battery charging or EV charging. It selects a specific number of the cheapest intervals throughout the day, even if they are scattered at different times.
+
+ALWAYS ON (FORCE ON): Overrides all logic and marks every interval as "Cheap." Use this when you need to bypass the price automation and run your devices immediately.
+
+📈 Operation Modes
+These profiles determine how "aggressively" the system identifies low-price periods in Low Price Cutoff mode:
+
+Aggressive: Targets only the extreme lows (bottom 10-15% of prices). Maximum savings, shortest runtime.
+
+Super Eco: Highly efficient, focuses on the lowest daily rates.
+
+Eco: Balanced energy-saving mode.
+
+Comfort: Wider operating windows, ensuring stability while maintaining low costs.
+
+📊 ApexCharts Visualization
+To see real-time prices and cheap windows on your dashboard, use the following ApexCharts code:
+```
+type: custom:apexcharts-card
+update_interval: 10sec
+cache: false
+header:
+  show: true
+  title: Rynek RCE (15-min)
+  show_states: true
+  colorize_states: true
 graph_span: 24h
 span:
   start: day
-header:
-  show: true
-  title: Rynkowa Cena Energii Elektrycznej [zł/MWh]
-  colorize_states: true
 now:
   show: true
   label: Teraz
-  color: var(--secondary-color)
+apex_config:
+  stroke:
+    dashArray:
+      - 0
+      - 5
+      - 0
+      - 0
 yaxis:
   - decimals: 0
+    min: 0
     apex_config:
       tickAmount: 5
 series:
-  - entity: sensor.rynkowa_cena_energii_elektrycznej
-    type: column
-    name: Cena Rynkowa Energii Elektrycznej
-    float_precision: 2
+  - entity: sensor.rce_electricity_market_price
+    name: Cena aktualna
+    type: area
+    color: "#2196f3"
+    stroke_width: 2
     data_generator: |
-      return entity.attributes.today.map((start, index) => {
-        return [new Date(start["start"]).getTime(), entity.attributes.today[index]['tariff']];
-      });</code></pre>
+      return entity.attributes.prices_today.map((price, index) => {
+        return [new Date().setHours(0,0,0,0) + (index * 15 * 60 * 1000), price];
+      });
+  - entity: sensor.rce_electricity_market_price
+    name: Średnia dziś
+    type: line
+    color: "#9e9e9e"
+    stroke_width: 2
+    data_generator: |
+      const avg = entity.attributes.average;
+      return entity.attributes.prices_today.map((_, index) => {
+        return [new Date().setHours(0,0,0,0) + (index * 15 * 60 * 1000), avg];
+      });
+  - entity: sensor.rce_electricity_market_price
+    name: Tanie okno (Tryb)
+    type: column
+    color: "#4caf50"
+    opacity: 0.3
+    stroke_width: 2
+    show:
+      in_header: false
+      legend_value: false
+    group_by:
+      func: max
+      duration: 15m
+    data_generator: |
+      const mask = entity.attributes.cheap_mask;
+      const prices = entity.attributes.prices_today;
+      if (!mask || !prices) return [];
+      return prices.map((price, index) => {
+        const isCheap = String(mask[index]).toLowerCase() === 'true';
+        return [
+          new Date().setHours(0,0,0,0) + (index * 15 * 60 * 1000), 
+          isCheap ? price : 0
+        ];
+      });
+  - entity: sensor.rce_electricity_market_price
+    name: Cena jutro
+    type: line
+    color: "#ff9800"
+    stroke_width: 2
+    extend_to: false
+    show:
+      in_header: false
+    data_generator: >
+      if (!entity.attributes.prices_tomorrow ||
+      entity.attributes.prices_tomorrow.length === 0) return [];
+
+      return entity.attributes.prices_tomorrow.map((price, index) => {
+        return [new Date().setHours(0,0,0,0) + ((index + 96) * 15 * 60 * 1000), price];
+      });
+  - entity: sensor.rce_electricity_market_price
+    attribute: operation_mode
+    show:
+      in_chart: false
+      in_header: false
+```
+
+🎮 Quick Control: Mode Selection Buttons
+You can add a button panel to your Dashboard that allows you to change your energy-saving strategy with a single click.
+
+Mode Capabilities:
+FORCE ON (Always On Mode): Ignores prices and forces the device to operate.
+
+AGGRESSIVE: Operates only during absolute price minimums (peak cheap energy periods).
+
+SUPER ECO / ECO: Intermediate energy-saving profiles.
+
+COMFORT: Prioritizes device operation while maintaining a reasonable price.
+
+💻 Button Card Code (Grid + Button)
+You can use a standard Grid card with buttons. Paste the following code into the card's YAML editor:
+```
+type: horizontal-stack
+cards:
+  - show_name: true
+    show_icon: true
+    type: button
+    name: SUPER ECO
+    icon: mdi:sprout
+    tap_action:
+      action: call-service
+      service: rce.set_operation_mode
+      data:
+        price_mode: LOW PRICE CUTOFF
+        mode: super_eco
+    card_mod:
+      style: |
+        ha-state-icon {
+          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'super_eco') and is_state_attr('sensor.rce_electricity_market_price', 'current_mode', 'LOW PRICE CUTOFF') %}
+            color: #4caf50 !important;
+            filter: drop-shadow(0 0 5px #4caf50);
+          {% else %}
+            color: var(--secondary-text-color);
+          {% endif %}
+        }
+  - show_name: true
+    show_icon: true
+    type: button
+    name: ECO
+    icon: mdi:leaf
+    tap_action:
+      action: call-service
+      service: rce.set_operation_mode
+      data:
+        price_mode: LOW PRICE CUTOFF
+        mode: eco
+    card_mod:
+      style: |
+        ha-state-icon {
+          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'eco') and is_state_attr('sensor.rce_electricity_market_price', 'current_mode', 'LOW PRICE CUTOFF') %}
+            color: #8bc34a !important;
+            filter: drop-shadow(0 0 5px #8bc34a);
+          {% else %}
+            color: var(--secondary-text-color);
+          {% endif %}
+        }
+  - show_name: true
+    show_icon: true
+    type: button
+    name: Komfort
+    icon: mdi:home-thermometer
+    tap_action:
+      action: call-service
+      service: rce.set_operation_mode
+      data:
+        price_mode: LOW PRICE CUTOFF
+        mode: comfort
+    card_mod:
+      style: |
+        ha-state-icon {
+          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'comfort') and is_state_attr('sensor.rce_electricity_market_price', 'current_mode', 'LOW PRICE CUTOFF') %}
+            color: #2196f3 !important;
+            filter: drop-shadow(0 0 5px #2196f3);
+          {% else %}
+            color: var(--secondary-text-color);
+          {% endif %}
+        }
+  - show_name: true
+    show_icon: true
+    type: button
+    name: Agresywny
+    icon: mdi:lightning-bolt
+    tap_action:
+      action: call-service
+      service: rce.set_operation_mode
+      data:
+        price_mode: LOW PRICE CUTOFF
+        mode: aggressive
+    card_mod:
+      style: |
+        ha-state-icon {
+          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'aggressive') and is_state_attr('sensor.rce_electricity_market_price', 'current_mode', 'LOW PRICE CUTOFF') %}
+            color: #ff5722 !important;
+            filter: drop-shadow(0 0 5px #ff5722);
+          {% else %}
+            color: var(--secondary-text-color);
+          {% endif %}
+        }
+  - show_name: true
+    show_icon: true
+    type: button
+    name: Wymuś ON
+    icon: mdi:power-plug
+    tap_action:
+      action: call-service
+      service: rce.set_operation_mode
+      data:
+        price_mode: ALWAYS ON
+    card_mod:
+      style: |
+        ha-state-icon {
+          {% if is_state_attr('sensor.rce_electricity_market_price', 'current_mode', 'ALWAYS ON') %}
+            color: #ffeb3b !important;
+            filter: drop-shadow(0 0 5px #ffeb3b);
+          {% else %}
+            color: var(--secondary-text-color);
+          {% endif %}
+        }
+```
 
 # Install
 
@@ -53,35 +269,30 @@ You can install the plugin via HACS using the following steps
 
 # Configuration
 All integration settings are available in the options in the integration configuration panel.
-![image](https://github.com/jacek2511/ha_rce/assets/112733566/f9e834b5-1322-435d-9ac3-e15b3b187cb9)
 
 # Available components
 
-### Sensor
-* rynkowa_cena_energii_elektrycznej - current energy price
+### Binary Sensor
+* rce_low_price
+
+### Sensors
+* rce_cheapest_price_today
+* rce_cheapest_hour_tomorrow
+* rce_next_cheap_window
+* sensor.rce_next_cheap_window
 
 ```
   attributes: 
-    next_price - energy price in the next hour
+    price_mode - described above 
+    operation_mode - described above
     average - average daily energy price
-    off_peak_1 - average energy price from 00:00 to 08:00
-    off_peak_2 - average energy price from 20:00 to 00:00
-    peak - average energy price from 08:00 to 20:00
-    min_average - minimum average energy price in the range of x consecutive hours; where x is configurable in options
-    custom_peak - average energy price over the range of hours defined by custom_peak_range
     min - minimum daily energy price
     max - maximum daily energy price
-    mean - median daily energy price
-    custom_peak_range - configurable range of hours for which the custom_peak attribute is calculated
+    median - median daily energy price
+    peak_range - configurable range of hours for which attributes is calculated
     low_price_cutoff - percentage of average price to set the low price attribute (low_price = hour_price < average * low_price_cutoff)
-    today - today's hourly prices in the format
-      - start: 2024-06-28 00:00
-        tariff: 604.2
-        low_price: false
-      - start: 2024-06-28 01:00
-        tariff: 488.93
-        low_price: false
-    tomorrow - tomorrow's hourly prices
+    prices_today - today's hourly prices in the table []
+    prices_tomorrow - tomorrow's hourly prices []
   ```
 
 [hacs]: https://hacs.xyz
