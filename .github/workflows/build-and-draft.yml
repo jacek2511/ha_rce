@@ -3,7 +3,8 @@ name: Build and Create Draft Release
 on:
   push:
     tags:
-      - 'v*' # Uruchom, gdy wypchniesz tag zaczynający się od litery 'v'
+      - 'v*'   # Tagi zaczynające się od v (np. v1.0)
+      - '[0-9]*' # Tagi zaczynające się od dowolnej cyfry (np. 2.5.1)
 
 jobs:
   build:
