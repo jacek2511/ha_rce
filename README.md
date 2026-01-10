@@ -40,95 +40,103 @@ Comfort: Wider operating windows, ensuring stability while maintaining low costs
 📊 ApexCharts Visualization
 To see real-time prices and cheap windows on your dashboard, use the following ApexCharts code:
 ```
-type: custom:apexcharts-card
-update_interval: 10sec
-cache: false
-header:
-  show: true
-  title: Rynek RCE (15-min)
-  show_states: true
-  colorize_states: true
-graph_span: 24h
-span:
-  start: day
-now:
-  show: true
-  label: Teraz
-apex_config:
-  stroke:
-    dashArray:
-      - 0
-      - 5
-      - 0
-      - 0
-yaxis:
-  - decimals: 0
-    min: 0
-    apex_config:
-      tickAmount: 5
-series:
-  - entity: sensor.rce_electricity_market_price
-    name: Cena aktualna
-    type: area
-    color: "#2196f3"
-    stroke_width: 2
-    data_generator: |
-      return entity.attributes.prices_today.map((price, index) => {
-        return [new Date().setHours(0,0,0,0) + (index * 15 * 60 * 1000), price];
-      });
-  - entity: sensor.rce_electricity_market_price
-    name: Średnia dziś
-    type: line
-    color: "#9e9e9e"
-    stroke_width: 2
-    data_generator: |
-      const avg = entity.attributes.average;
-      return entity.attributes.prices_today.map((_, index) => {
-        return [new Date().setHours(0,0,0,0) + (index * 15 * 60 * 1000), avg];
-      });
-  - entity: sensor.rce_electricity_market_price
-    name: Tanie okno (Tryb)
-    type: column
-    color: "#4caf50"
-    opacity: 0.3
-    stroke_width: 2
-    show:
-      in_header: false
-      legend_value: false
-    group_by:
-      func: max
-      duration: 15m
-    data_generator: |
-      const mask = entity.attributes.cheap_mask;
-      const prices = entity.attributes.prices_today;
-      if (!mask || !prices) return [];
-      return prices.map((price, index) => {
-        const isCheap = String(mask[index]).toLowerCase() === 'true';
-        return [
-          new Date().setHours(0,0,0,0) + (index * 15 * 60 * 1000), 
-          isCheap ? price : 0
-        ];
-      });
-  - entity: sensor.rce_electricity_market_price
-    name: Cena jutro
-    type: line
-    color: "#ff9800"
-    stroke_width: 2
-    extend_to: false
-    show:
-      in_header: false
-    data_generator: >
-      if (!entity.attributes.prices_tomorrow ||
-      entity.attributes.prices_tomorrow.length === 0) return [];
+type: custom:config-template-card
+variables:
+  AVG: >-
+    parseFloat(states['sensor.rce_electricity_market_price']?.attributes?.average)
+    || 400
+entities:
+  - sensor.rce_electricity_market_price
+card:
+  type: custom:apexcharts-card
+  update_interval: 10sec
+  header:
+    show: true
+    title: Rynek RCE (15-min)
+    show_states: true
+    colorize_states: true
+  graph_span: 24h
+  span:
+    start: day
+  now:
+    show: true
+    label: Teraz
+  apex_config:
+    chart:
+      height: 350
+      stacked: true
+    stroke:
+      dashArray:
+        - 0
+        - 5
+        - 0
+        - 0
+        - 0
+  series:
+    - entity: sensor.rce_electricity_market_price
+      name: Cena aktualna
+      type: area
+      color: "#2196f3"
+      stroke_width: 2
+      data_generator: >
+        return entity.attributes.prices_today.map((p, i) => [new
+        Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), p]);
+    - entity: sensor.rce_electricity_market_price
+      name: Średnia dziś
+      type: line
+      color: "#9e9e9e"
+      stroke_width: 2
+      data_generator: >
+        const avg = entity.attributes.average;
 
-      return entity.attributes.prices_tomorrow.map((price, index) => {
-        return [new Date().setHours(0,0,0,0) + ((index + 96) * 15 * 60 * 1000), price];
-      });
-  - entity: sensor.rce_electricity_market_price
-    attribute: operation_mode
-    show:
-      in_chart: false
-      in_header: false
+        return entity.attributes.prices_today.map((_, i) => [new
+        Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), avg]);
+    - entity: sensor.rce_electricity_market_price
+      name: Drogo
+      type: column
+      color: "#e53935"
+      opacity: 0.4
+      stroke_width: 2
+      show:
+        in_header: false
+      data_generator: |
+        const prices = entity.attributes.prices_today;
+        const avg = entity.attributes.average;
+        const mask = entity.attributes.cheap_mask_today;
+        return prices.map((p, i) => {
+          const isCheap = String(mask[i]).toLowerCase() === 'true';
+          return [new Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), (p > avg && !isCheap) ? p : 0];
+        });
+    - entity: sensor.rce_electricity_market_price
+      name: Normalnie
+      type: column
+      color: "#2196f3"
+      opacity: 0.4
+      show:
+        in_header: false
+      data_generator: |
+        const prices = entity.attributes.prices_today;
+        const avg = entity.attributes.average;
+        const mask = entity.attributes.cheap_mask_today;
+        return prices.map((p, i) => {
+          const isCheap = String(mask[i]).toLowerCase() === 'true';
+          return [new Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), (p <= avg && !isCheap) ? p : 0];
+        });
+    - entity: sensor.rce_electricity_market_price
+      name: Tanie okno
+      type: column
+      color: "#4caf50"
+      opacity: 0.7
+      stroke_width: 2
+      show:
+        in_header: false
+      data_generator: |
+        const prices = entity.attributes.prices_today;
+        const mask = entity.attributes.cheap_mask_today;
+        return prices.map((p, i) => {
+          const isCheap = String(mask[i]).toLowerCase() === 'true';
+          return [new Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), isCheap ? p : 0];
+        });
 ```
 
 🎮 Quick Control: Mode Selection Buttons
@@ -292,7 +300,9 @@ All integration settings are available in the options in the integration configu
     peak_range - configurable range of hours for which attributes is calculated
     low_price_cutoff - percentage of average price to set the low price attribute (low_price = hour_price < average * low_price_cutoff)
     prices_today - today's hourly prices in the table []
+    cheap_mask_today - today's periods marked as low in the table []
     prices_tomorrow - tomorrow's hourly prices []
+    cheap_mask_tomorrow - tomorrrow's periods marked as low in the table []
   ```
 
 [hacs]: https://hacs.xyz
