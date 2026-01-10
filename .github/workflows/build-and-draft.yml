@@ -1,0 +1,34 @@
+name: Build and Create Draft Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Uruchom, gdy wypchniesz tag zaczynający się od litery 'v'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Wymagane, aby Action mogło stworzyć release
+
+    steps:
+      - name: Checkout kodu
+        uses: actions/checkout@v4
+
+      # TUTAJ KROK TWOJEJ KOMPILACJI (przykład dla ZIP)
+      - name: Przygotowanie plików (Assetów)
+        run: |
+          mkdir build
+          echo "To jest gotowy produkt" > build/instrukcja.txt
+          zip -r release-package.zip build/
+
+      - name: Tworzenie Draftu Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true  # KLUCZOWE: to sprawia, że release nie jest publiczny
+          prerelease: false
+          files: |
+            release-package.zip
+            inne-pliki-jesli-masz.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
