@@ -1,32 +1,85 @@
-"""Constants for the RCE integration."""
+"""Constants for the RCE (PSE) integration."""
 
 from datetime import timedelta
 from typing import Final
-
 import logging
 
+# =========================================================
+# DOMAIN & LOGGER
+# =========================================================
 DOMAIN: Final = "rce"
+_LOGGER = logging.getLogger(__name__)
+
+# =========================================================
+# GENERAL SETTINGS
+# =========================================================
+# Odświeżanie koordynatora (co 15 min zgodnie z interwałem RCE)
+SCAN_INTERVAL = timedelta(minutes=15)
+
 DEFAULT_CURRENCY: Final = "PLN"
 DEFAULT_PRICE_TYPE: Final = "MWh"
 
-DEFAULT_CUSTOM_PEAK_HOURS_RANGE = "10-17"
-DEFAULT_LOW_PRICE_CUTOFF = 90
-DEFAULT_NUMBER_OF_CHEAPEST_HOURS = 3
-DEFAULT_PRICE_MODE = "LOW PRICE CUTOFF"
-DEFAULT_NEGATIVE_PRICES = True
+# =========================================================
+# TIME RESOLUTION
+# =========================================================
+CONF_TIME_RESOLUTION: Final = "time_resolution"
+RESOLUTION_15M: Final = "15m"
+RESOLUTION_1H: Final = "1h"
 
-CONF_CUSTOM_PEAK_HOURS_RANGE: Final = "custom_peak_range"
-CONF_LOW_PRICE_CUTOFF: Final = "low_price_cutoff"
-CONF_NUMBER_OF_CHEAPEST_HOURS: Final ="number_of_cheapest_hours"
-CONF_PRICE_MODE: Final = "cheapest_price_mode"
+DEFAULT_TIME_RESOLUTION: Final = RESOLUTION_15M
+
+# =========================================================
+# CONFIGURATION KEYS (Options Flow)
+# =========================================================
+CONF_PRICE_MODE: Final = "price_mode"
+CONF_OPERATION_MODE: Final = "operation_mode"
+CONF_CUSTOM_PEAK_HOURS_RANGE: Final = "custom_peak_hours_range"
 CONF_NEGATIVE_PRICES: Final = "negative_prices"
 
-PRICE_MODES = [
-    "LOW PRICE CUTOFF",
-    "CHEAPEST CONSECUTIVE HOURS",
-    "CHEAPEST HOURS (NOT CONSECUTIVE)",
+# Klucze dla suwaków trybów ilościowych
+CONF_CONSECUTIVE_COUNT: Final = "consecutive_ranges_count"
+CONF_NOT_CONSECUTIVE_COUNT: Final = "cheapest_not_consecutive_count"
+
+# =========================================================
+# DEFAULTS
+# =========================================================
+DEFAULT_PRICE_MODE: Final = "LOW PRICE CUTOFF"
+DEFAULT_OPERATION_MODE: Final = "comfort"
+DEFAULT_CUSTOM_PEAK_HOURS_RANGE: Final = "00-24"
+DEFAULT_NEGATIVE_PRICES: Final = True
+
+# =========================================================
+# OPERATION MODES (Presets dla Low Price Cutoff)
+# =========================================================
+MODE_SUPER_ECO = "super_eco"
+MODE_ECO = "eco"
+MODE_COMFORT = "comfort"
+MODE_AGGRESSIVE = "aggressive"
+
+OPERATION_MODES = [
+    MODE_SUPER_ECO,
+    MODE_ECO,
+    MODE_COMFORT,
+    MODE_AGGRESSIVE,
 ]
 
-_LOGGER = logging.getLogger(__name__)
+# =========================================================
+# PRICE MODES (Główne tryby wyznaczania energii)
+# =========================================================
+PRICE_MODE_LOW_PRICE_CUTOFF = "LOW PRICE CUTOFF"
+PRICE_MODE_CHEAPEST_CONSECUTIVE = "CHEAPEST CONSECUTIVE RANGES"
+PRICE_MODE_CHEAPEST_ANY = "CHEAPEST RANGES (NOT CONSECUTIVE)"
+PRICE_MODE_ALWAYS_ON = "always_on"  # NOWA OPCJA
 
-SCAN_INTERVAL = timedelta(seconds=30)
+PRICE_MODES = [
+    PRICE_MODE_LOW_PRICE_CUTOFF,
+    PRICE_MODE_CHEAPEST_CONSECUTIVE,
+    PRICE_MODE_CHEAPEST_ANY,
+    PRICE_MODE_ALWAYS_ON,
+]
+
+# =========================================================
+# SENSOR ATTRIBUTES
+# =========================================================
+ATTR_RESOLUTION = "resolution"
+ATTR_PRICE_MODE = "price_mode"
