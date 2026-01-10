@@ -162,7 +162,7 @@ cards:
     card_mod:
       style: |
         ha-state-icon {
-          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'super_eco') and is_state_attr('sensor.rce_electricity_market_price', 'current_mode', 'LOW PRICE CUTOFF') %}
+          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'super_eco') and is_state_attr('sensor.rce_electricity_market_price', 'price_mode', 'LOW PRICE CUTOFF') %}
             color: #4caf50 !important;
             filter: drop-shadow(0 0 5px #4caf50);
           {% else %}
@@ -183,7 +183,7 @@ cards:
     card_mod:
       style: |
         ha-state-icon {
-          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'eco') and is_state_attr('sensor.rce_electricity_market_price', 'current_mode', 'LOW PRICE CUTOFF') %}
+          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'eco') and is_state_attr('sensor.rce_electricity_market_price', 'price_mode', 'LOW PRICE CUTOFF') %}
             color: #8bc34a !important;
             filter: drop-shadow(0 0 5px #8bc34a);
           {% else %}
@@ -204,7 +204,7 @@ cards:
     card_mod:
       style: |
         ha-state-icon {
-          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'comfort') and is_state_attr('sensor.rce_electricity_market_price', 'current_mode', 'LOW PRICE CUTOFF') %}
+          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'comfort') and is_state_attr('sensor.rce_electricity_market_price', 'price_mode', 'LOW PRICE CUTOFF') %}
             color: #2196f3 !important;
             filter: drop-shadow(0 0 5px #2196f3);
           {% else %}
@@ -225,7 +225,7 @@ cards:
     card_mod:
       style: |
         ha-state-icon {
-          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'aggressive') and is_state_attr('sensor.rce_electricity_market_price', 'current_mode', 'LOW PRICE CUTOFF') %}
+          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'aggressive') and is_state_attr('sensor.rce_electricity_market_price', 'price_mode', 'LOW PRICE CUTOFF') %}
             color: #ff5722 !important;
             filter: drop-shadow(0 0 5px #ff5722);
           {% else %}
@@ -245,7 +245,7 @@ cards:
     card_mod:
       style: |
         ha-state-icon {
-          {% if is_state_attr('sensor.rce_electricity_market_price', 'current_mode', 'ALWAYS ON') %}
+          {% if is_state_attr('sensor.rce_electricity_market_price', 'price_mode', 'ALWAYS ON') %}
             color: #ffeb3b !important;
             filter: drop-shadow(0 0 5px #ffeb3b);
           {% else %}
