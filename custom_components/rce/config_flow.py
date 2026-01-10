@@ -1,116 +1,113 @@
-"""RCE PSE config flow"""
 from __future__ import annotations
 
-import re
-from typing import Any
-
 import voluptuous as vol
-
-from homeassistant.config_entries import (
-    ConfigEntry,
-    ConfigFlow,
-    ConfigFlowResult,
-    OptionsFlow,
-)
-
+import re
+from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers import config_validation as cv
 
 from .const import (
     DOMAIN,
+    PRICE_MODES,
     CONF_CUSTOM_PEAK_HOURS_RANGE,
-    CONF_LOW_PRICE_CUTOFF,
-    CONF_NUMBER_OF_CHEAPEST_HOURS,
     CONF_PRICE_MODE,
     CONF_NEGATIVE_PRICES,
+    CONF_TIME_RESOLUTION,
     DEFAULT_CUSTOM_PEAK_HOURS_RANGE,
-    DEFAULT_LOW_PRICE_CUTOFF,
-    DEFAULT_NUMBER_OF_CHEAPEST_HOURS,
     DEFAULT_PRICE_MODE,
     DEFAULT_NEGATIVE_PRICES,
-    PRICE_MODES,   
+    DEFAULT_TIME_RESOLUTION,
+    RESOLUTION_15M,
+    RESOLUTION_1H,
+    CONF_OPERATION_MODE,
+    OPERATION_MODES,
+    DEFAULT_OPERATION_MODE,
+    CONF_CONSECUTIVE_COUNT,
+    CONF_NOT_CONSECUTIVE_COUNT,
 )
 
+def validate_hour_range(value: str) -> bool:
+    """Sprawdza czy format to HH-HH (np. 08-16) i czy godziny są poprawne."""
+    pattern = r"^\d{1,2}-\d{1,2}$"
+    if not re.match(pattern, value):
+        return False
+    
+    try:
+        start, end = map(int, value.split("-"))
+        return 0 <= start < 24 and 0 <= end <= 24 and start < end
+    except ValueError:
+        return False
 
-RE_HOURS_RANGE = re.compile(r"^/d{1,2}-/d{1,2}$")
 
-
-class PSESensorConfigFlow(ConfigFlow, domain=DOMAIN):
-
-    # The schema version of the entries that it creates
-    # Home Assistant will call your migrate method if the version changes
+class RCEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for RCE."""
     VERSION = 1
+
+    async def async_step_user(self, user_input=None):
+        """Krok inicjalny tworzenia integracji."""
+        if self._async_current_entries():
+            return self.async_abort(reason="single_instance_allowed")
+
+        if user_input is not None:
+            return self.async_create_entry(
+                title="PSE Market Electricity Price (RCE)",
+                data={},
+            )
+
+        return self.async_show_form(step_id="user")
 
     @staticmethod
     @callback
-    def async_get_options_flow(
-        config_entry: ConfigEntry,
-    ) -> PSESensorOptionFlow:
-        """Get the options flow for this handler."""
-        return PSESensorOptionFlow(config_entry)
+    def async_get_options_flow(config_entry):
+        return RCEOptionsFlowHandler(config_entry)
 
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        await self.async_set_unique_id("pse_sensor_config_flow")
-        self._abort_if_unique_id_configured()
-        return self.async_show_form(step_id="hello")
+class RCEOptionsFlowHandler(config_entries.OptionsFlow):
+    """Obsługa opcji konfiguracji (menu Opcje w HA)."""
 
-    async def async_step_hello(self, user_input=None):
-        """3. Krok logowania"""
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-        return self.async_show_form(step_id="hello")
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Inicjalizacja przepływu opcji."""
+        super().__init__()
 
-class PSESensorOptionFlow(OptionsFlow):
-    """Handle options."""
-
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Manage the options."""
+    async def async_step_init(self, user_input=None):
+        """Zarządzanie opcjami na jednym ekranie."""
         errors = {}
+        options = self.config_entry.options
+
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            if not validate_hour_range(user_input.get(CONF_CUSTOM_PEAK_HOURS_RANGE, "")):
+                errors[CONF_CUSTOM_PEAK_HOURS_RANGE] = "invalid_hour_range"
+            else:
+                return self.async_create_entry(title="", data=user_input)
+
+        current_settings = (
+            f"Obecne ustawienia:\n"
+            f"SUPER ECO: {options.get('super_eco_percentile', 10)}% / {options.get('super_eco_min_window', 3)}h\n"
+            f"ECO: {options.get('eco_percentile', 20)}% / {options.get('eco_min_window', 4)}h\n"
+            f"COMFORT: {options.get('comfort_percentile', 30)}% / {options.get('comfort_min_window', 2)}h\n"
+            f"AGGRESSIVE: {options.get('aggressive_percentile', 45)}% / {options.get('aggressive_min_window', 1)}h"
+        )
+
+        schema = vol.Schema({
+            vol.Required(CONF_TIME_RESOLUTION, default=options.get(CONF_TIME_RESOLUTION, DEFAULT_TIME_RESOLUTION)): vol.In([RESOLUTION_15M, RESOLUTION_1H]),
+            vol.Required(CONF_PRICE_MODE, default=options.get(CONF_PRICE_MODE, DEFAULT_PRICE_MODE)): vol.In(PRICE_MODES),
+            vol.Required(CONF_CONSECUTIVE_COUNT, default=options.get(CONF_CONSECUTIVE_COUNT, 4)): vol.All(vol.Coerce(int), vol.Range(min=1, max=48)),
+            vol.Required(CONF_NOT_CONSECUTIVE_COUNT, default=options.get(CONF_NOT_CONSECUTIVE_COUNT, 4)): vol.All(vol.Coerce(int), vol.Range(min=1, max=96)),
+            vol.Required(CONF_OPERATION_MODE, default=options.get(CONF_OPERATION_MODE, DEFAULT_OPERATION_MODE)): vol.In(OPERATION_MODES),
+            vol.Required("super_eco_percentile", default=options.get("super_eco_percentile", 10)): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
+            vol.Required("super_eco_min_window", default=options.get("super_eco_min_window", 3)): vol.All(vol.Coerce(int), vol.Range(min=1, max=24)),
+            vol.Required("eco_percentile", default=options.get("eco_percentile", 20)): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
+            vol.Required("eco_min_window", default=options.get("eco_min_window", 4)): vol.All(vol.Coerce(int), vol.Range(min=1, max=24)),
+            vol.Required("comfort_percentile", default=options.get("comfort_percentile", 30)): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
+            vol.Required("comfort_min_window", default=options.get("comfort_min_window", 2)): vol.All(vol.Coerce(int), vol.Range(min=1, max=24)),
+            vol.Required("aggressive_percentile", default=options.get("aggressive_percentile", 45)): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
+            vol.Required("aggressive_min_window", default=options.get("aggressive_min_window", 1)): vol.All(vol.Coerce(int), vol.Range(min=1, max=24)),
+            vol.Required(CONF_NEGATIVE_PRICES, default=options.get(CONF_NEGATIVE_PRICES, DEFAULT_NEGATIVE_PRICES)): bool,
+            vol.Required(CONF_CUSTOM_PEAK_HOURS_RANGE, default=options.get(CONF_CUSTOM_PEAK_HOURS_RANGE, DEFAULT_CUSTOM_PEAK_HOURS_RANGE)): str,
+        })
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_CUSTOM_PEAK_HOURS_RANGE,
-                        default=self.config_entry.options.get(
-                            CONF_CUSTOM_PEAK_HOURS_RANGE, DEFAULT_CUSTOM_PEAK_HOURS_RANGE
-                        ),
-                    ): str,
-                    vol.Optional(
-                        CONF_LOW_PRICE_CUTOFF,
-                        default=self.config_entry.options.get(
-                            CONF_LOW_PRICE_CUTOFF, DEFAULT_LOW_PRICE_CUTOFF
-                        ),
-                    ): vol.Coerce(int),
-                    vol.Optional(
-                        CONF_NUMBER_OF_CHEAPEST_HOURS,
-                        default=self.config_entry.options.get(
-                            CONF_NUMBER_OF_CHEAPEST_HOURS, DEFAULT_NUMBER_OF_CHEAPEST_HOURS
-                        ),
-                    ): vol.Coerce(int),
-                    vol.Optional(
-                        CONF_PRICE_MODE,
-                        default=self.config_entry.options.get(
-                            CONF_PRICE_MODE, DEFAULT_PRICE_MODE
-                        ),
-                    ): vol.In(PRICE_MODES), 
-                    vol.Optional(
-                        CONF_NEGATIVE_PRICES,
-                        default=self.config_entry.options.get(
-                            CONF_NEGATIVE_PRICES, DEFAULT_NEGATIVE_PRICES
-                        ),
-                    ): bool, 
-                }
-            ),
+            data_schema=schema,
             errors=errors,
+            description_placeholders={"current_status": current_settings}
         )
