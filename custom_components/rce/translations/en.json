@@ -1,25 +1,68 @@
 {
-    "title": "PSE RCE Integration",
-    "config": {
-        "step": {
-            "user": {
-                "description": "Do you want to add PSE RCE integration",
-                "title": "PSE RCE Sensor"
-            }
-        }
+  "entity": {
+    "sensor": {
+      "electricity_market_price": { "name": "Electricity Market Price" },
+      "next_cheap_window": { "name": "Next Cheap Window Today" },
+      "cheapest_price_today": { "name": "Cheapest Price Today" },
+      "cheapest_hour_tomorrow": { "name": "Cheapest Hour Tomorrow" }
     },
-    "options": {
-        "step": {
-            "init": {
-                "description": "These values allow tweaking the PSE RCE Sensor result. Please refer to the documentation if a field is unclear.",
-                "data": {
-                    "custom_peak_range": "Custom Peak Hours Range [from-to], e.g. 10-16",
-                    "low_price_cutoff": "Low Price CUTOFF Percent",
-                    "number_of_cheapest_hours": "Number of consecutive cheapest hours",
-                    "cheapest_price_mode": "Selecting the mode for determining the cheapest hours",
-                    "negative_prices": "Mark negative prices as low_price"
-                }
-            }
+    "binary_sensor": {
+      "low_price": { "name": "Low Price" }
+    }
+  },
+  "title": "PSE – Market Electricity Price (RCE)",
+  "config": {
+    "step": {
+      "user": {
+        "title": "PSE RCE",
+        "description": "Do you want to add the Market Electricity Price (RCE) integration?"
+      }
+    }
+  },
+  "options": {
+    "error": {
+      "invalid_hour_range": "Invalid hour format. Use HH-HH (e.g., 09-17), where start < end."
+    },
+    "step": {
+      "init": {
+        "title": "RCE Settings",
+        "description": "{current_status}",
+        "data": {
+          "time_resolution": "Time resolution",
+          "custom_peak_hours_range": "Operating hours range (e.g., 00-24)",
+          "price_mode": "Cheap energy calculation method",
+          "consecutive_ranges_count": "Consecutive windows (count)",
+          "cheapest_not_consecutive_count": "Cheapest windows (total count)",
+          "negative_prices": "Handle negative prices",
+          "operation_mode": "Active LOW PRICE CUTOFF profile",
+          "super_eco_percentile": "SUPER ECO: Percentile (%)",
+          "super_eco_min_window": "SUPER ECO: Min window (h)",
+          "eco_percentile": "ECO: Percentile (%)",
+          "eco_min_window": "ECO: Min window (h)",
+          "comfort_percentile": "COMFORT: Percentile (%)",
+          "comfort_min_window": "COMFORT: Min window (h)",
+          "aggressive_percentile": "AGGRESSIVE: Percentile (%)",
+          "aggressive_min_window": "AGGRESSIVE: Min window (h)"
         }
-    } 
+      }
+    }
+  },
+  "selector": {
+    "price_mode": {
+      "options": {
+        "LOW PRICE CUTOFF": "LOW PRICE CUTOFF (Profiles)",
+        "CHEAPEST CONSECUTIVE RANGES": "Cheapest consecutive block",
+        "CHEAPEST RANGES (NOT CONSECUTIVE)": "Cheapest scattered windows",
+        "ALWAYS ON": "Always ON (Optimization disabled)"
+      }
+    },
+    "operation_mode": {
+      "options": {
+        "super_eco": "Super Eco (Max savings)",
+        "eco": "Eco (High savings)",
+        "comfort": "Comfort (Balanced)",
+        "aggressive": "Aggressive (Priority work)"
+      }
+    }
+  }
 }
