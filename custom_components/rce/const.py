@@ -13,7 +13,6 @@ _LOGGER = logging.getLogger(__name__)
 # =========================================================
 # GENERAL SETTINGS
 # =========================================================
-# Odświeżanie koordynatora (co 15 min zgodnie z interwałem RCE)
 SCAN_INTERVAL = timedelta(minutes=15)
 
 DEFAULT_CURRENCY: Final = "PLN"
@@ -64,12 +63,12 @@ OPERATION_MODES = [
 ]
 
 # =========================================================
-# PRICE MODES (Główne tryby wyznaczania energii)
+# PRICE MODES
 # =========================================================
 PRICE_MODE_LOW_PRICE_CUTOFF = "LOW PRICE CUTOFF"
 PRICE_MODE_CHEAPEST_CONSECUTIVE = "CHEAPEST CONSECUTIVE RANGES"
 PRICE_MODE_CHEAPEST_ANY = "CHEAPEST RANGES (NOT CONSECUTIVE)"
-PRICE_MODE_ALWAYS_ON = "always_on"  # NOWA OPCJA
+PRICE_MODE_ALWAYS_ON = "ALWAYS ON"
 
 PRICE_MODES = [
     PRICE_MODE_LOW_PRICE_CUTOFF,
