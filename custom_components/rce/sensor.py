@@ -12,10 +12,6 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
-    BinarySensorEntity,
-)
 from homeassistant.core import HomeAssistant
 from homeassistant import config_entries
 from homeassistant.helpers.update_coordinator import (
@@ -66,7 +62,7 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
     """Coordinator to fetch data from PSE and calculate low price windows."""
     def __init__(self, hass, config_entry):
         self.config_entry = config_entry
-        super().__init__(hass, _LOGGER, name="RCE Coordinator", update_interval=timedelta(minutes=15))
+        super().__init__(hass, _LOGGER, name="RCE Coordinator", update_interval=timedelta(minutes=30))
 
     async def _fetch_day_data(self, offset: int):
         target_date = dt_util.now() + timedelta(days=offset)
@@ -81,6 +77,56 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.warning("Connection error for %s: %s", date_str, err)
         return []
 
+    def _calculate_mask(self, prices, price_mode, options, res, peak_range_str):
+        """Helper to calculate cheap mask for a given price set."""
+        if not prices:
+            return []
+        
+        factor = 4 # Operujemy na 96 punktach
+        full_mask = [False] * len(prices)
+        
+        if price_mode == "ALWAYS ON":
+            return [True] * len(prices)
+            
+        try:
+            start_h, end_h = map(int, peak_range_str.split("-"))
+            start_idx = max(0, start_h * factor)
+            end_idx = min(len(prices), end_h * factor)
+        except Exception:
+            start_idx, end_idx = 0, len(prices)
+
+        filtered_prices = prices[start_idx:end_idx]
+        temp_mask = [False] * len(filtered_prices)
+
+        if filtered_prices:
+            if price_mode == "LOW PRICE CUTOFF":
+                active_mode = options.get(CONF_OPERATION_MODE, "comfort").lower()
+                p_val = options.get(f"{active_mode}_percentile", 30) / 100.0
+                w_val = options.get(f"{active_mode}_min_window", 2) * factor
+                threshold = sorted(filtered_prices)[int(len(filtered_prices) * p_val)]
+                mask = [p <= threshold for p in filtered_prices]
+                temp_mask = self._apply_min_window(mask, w_val)
+
+            elif price_mode == "CHEAPEST CONSECUTIVE RANGES":
+                count = options.get("consecutive_ranges_count", 4) * (4 if res != RESOLUTION_15M else 1)
+                if len(filtered_prices) >= count:
+                    min_sum, best_start = float('inf'), 0
+                    for i in range(len(filtered_prices) - count + 1):
+                        curr_sum = sum(filtered_prices[i : i + count])
+                        if curr_sum < min_sum:
+                            min_sum, best_start = curr_sum, i
+                    for i in range(best_start, best_start + count): temp_mask[i] = True
+
+            elif "NOT CONSECUTIVE" in price_mode:
+                count = options.get("cheapest_not_consecutive_count", 4) * (4 if res != RESOLUTION_15M else 1)
+                indexed = sorted(enumerate(filtered_prices), key=lambda x: x[1])
+                for i in range(min(count, len(filtered_prices))): temp_mask[indexed[i][0]] = True
+
+        for i, val in enumerate(temp_mask): 
+            if start_idx + i < len(full_mask):
+                full_mask[start_idx + i] = val
+        return full_mask
+
     async def _async_update_data(self):
         options = self.config_entry.options
         res = options.get(CONF_TIME_RESOLUTION, DEFAULT_TIME_RESOLUTION)
@@ -92,7 +138,6 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
         if not raw_today:
             raise UpdateFailed("Brak danych z PSE.")
 
-        factor = 4 if res == RESOLUTION_15M else 1
         prices_today = [float(x["rce_pln"]) for x in raw_today]
         
         prices_tomorrow = []
@@ -101,68 +146,18 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
             if raw_tomorrow:
                 prices_tomorrow = [float(x["rce_pln"]) for x in raw_tomorrow]
 
-        # --- NOWA LOGIKA: AGREGACJA DO 1H ---
-        # Jeśli tryb to nie 15M (czyli 1h), uśredniamy co 4 wartości
-        if res != RESOLUTION_15M and len(prices_today) == 96:
-            hourly_prices = []
-            for i in range(0, 96, 4):
-                avg_h = mean(prices_today[i:i+4])
-                hourly_prices.extend([round(avg_h, 2)] * 4)
-            prices_today = hourly_prices
+        # Agregacja do 1h
+        if res != RESOLUTION_15M:
+            if len(prices_today) == 96:
+                prices_today = [round(mean(prices_today[i:i+4]), 2) for i in range(0, 96, 4) for _ in range(4)]
+            if len(prices_tomorrow) == 96:
+                prices_tomorrow = [round(mean(prices_tomorrow[i:i+4]), 2) for i in range(0, 96, 4) for _ in range(4)]
 
-        if res != RESOLUTION_15M and len(prices_tomorrow) == 96:
-            hourly_prices_tom = []
-            for i in range(0, 96, 4):
-                avg_h = mean(prices_tomorrow[i:i+4])
-                hourly_prices_tom.extend([round(avg_h, 2)] * 4)
-            prices_tomorrow = hourly_prices_tom
-        # --- KONIEC LOGIKI AGREGACJI ---
-
-        full_mask = [False] * len(prices_today)
-        
-        if price_mode == "ALWAYS ON":
-            full_mask = [True] * len(prices_today)
-        else:
-            try:
-                start_h, end_h = map(int, peak_range_str.split("-"))
-                start_idx = max(0, start_h * 4) # Zawsze * 4 bo operujemy na masce 96
-                end_idx = min(len(prices_today), end_h * 4)
-            except Exception:
-                start_idx, end_idx = 0, len(prices_today)
-
-            filtered_prices = prices_today[start_idx:end_idx]
-            temp_mask = [False] * len(filtered_prices)
-
-            if filtered_prices:
-                if price_mode == "LOW PRICE CUTOFF":
-                    active_mode = options.get(CONF_OPERATION_MODE, "comfort").lower()
-                    p_val = options.get(f"{active_mode}_percentile", 30) / 100.0
-                    w_val = options.get(f"{active_mode}_min_window", 2) * 4
-                    threshold = sorted(filtered_prices)[int(len(filtered_prices) * p_val)]
-                    mask = [p <= threshold for p in filtered_prices]
-                    temp_mask = self._apply_min_window(mask, w_val)
-
-                elif price_mode == "CHEAPEST CONSECUTIVE RANGES":
-                    count = options.get("consecutive_ranges_count", 4) * (4 if res != RESOLUTION_15M else 1)
-                    if len(filtered_prices) >= count:
-                        min_sum, best_start = float('inf'), 0
-                        for i in range(len(filtered_prices) - count + 1):
-                            curr_sum = sum(filtered_prices[i : i + count])
-                            if curr_sum < min_sum:
-                                min_sum, best_start = curr_sum, i
-                        for i in range(best_start, best_start + count): temp_mask[i] = True
-
-                elif "NOT CONSECUTIVE" in price_mode:
-                    count = options.get("cheapest_not_consecutive_count", 4) * (4 if res != RESOLUTION_15M else 1)
-                    indexed = sorted(enumerate(filtered_prices), key=lambda x: x[1])
-                    for i in range(min(count, len(filtered_prices))): temp_mask[indexed[i][0]] = True
-
-            for i, val in enumerate(temp_mask): 
-                if start_idx + i < len(full_mask):
-                    full_mask[start_idx + i] = val
+        # Obliczanie masek
+        cheap_mask_today = self._calculate_mask(prices_today, price_mode, options, res, peak_range_str)
+        cheap_mask_tomorrow = self._calculate_mask(prices_tomorrow, price_mode, options, res, peak_range_str)
 
         return {
-            "raw_today": raw_today,
             "price_mode": price_mode,                                         
             "operation_mode": operation_mode,
             "peak_range" : peak_range_str,
@@ -174,7 +169,8 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
                 "max": max(prices_today) if prices_today else 0,
                 "median": round(median(prices_today), 2) if prices_today else 0,
             },
-            "cheap_mask": full_mask,
+            "cheap_mask_today": cheap_mask_today,
+            "cheap_mask_tomorrow": cheap_mask_tomorrow,
             "resolution": res,
         }
 
@@ -220,13 +216,14 @@ class RCESensor(CoordinatorEntity, SensorEntity):
             "price_mode": self.coordinator.data.get("price_mode"),                               
             "operation_mode": self.coordinator.data.get("operation_mode"),
             "peak_range": self.coordinator.data.get("peak_range"),                           
-            "cheap_mask": self.coordinator.data.get("cheap_mask"),                                   
             "average": stats.get("average"),
             "min": stats.get("min"),
             "max": stats.get("max"),
             "median": stats.get("median"),
             "prices_today": self.coordinator.data.get("prices_today"),
+            "cheap_mask_today": self.coordinator.data.get("cheap_mask_today"),                                 
             "prices_tomorrow": self.coordinator.data.get("prices_tomorrow"),
+            "cheap_mask_tomorrow": self.coordinator.data.get("cheap_mask_tomorrow"),  
         }
 
 class RCENextCheapWindowSensor(CoordinatorEntity, SensorEntity):
@@ -238,7 +235,7 @@ class RCENextCheapWindowSensor(CoordinatorEntity, SensorEntity):
         self.entity_id = "sensor.rce_next_cheap_window"
     @property
     def native_value(self):
-        mask = self.coordinator.data.get("cheap_mask", [])
+        mask = self.coordinator.data.get("cheap_mask_today", [])
         idx = get_current_index(self.coordinator.data)
         for i in range(idx + 1, len(mask)):
             if mask[i]: return f"{i // 4:02d}:{(i % 4) * 15:02d}"
