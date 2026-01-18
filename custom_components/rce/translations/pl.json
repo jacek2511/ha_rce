@@ -4,10 +4,13 @@
       "electricity_market_price": { "name": "Rynkowa cena energii" },
       "next_cheap_window": { "name": "Następne tanie okno dzisiaj" },
       "cheapest_price_today": { "name": "Najniższa cena dzisiaj" },
-      "cheapest_hour_tomorrow": { "name": "Najtańsza godzina jutro" }
+      "cheapest_hour_tomorrow": { "name": "Najtańsza godzina jutro" },
+      "api_status": { "name": "Status API" },
+      "last_successful_update": { "name": "Ostatnia aktualizacja" }
     },
     "binary_sensor": {
-      "low_price": { "name": "Tania energia (Low Price)" }
+      "low_price": { "name": "Tania energia (Low Price)" },
+      "tomorrow_data_available": { "name": "Dane jutrzejszego dnia" }
     }
   },
   "title": "PSE – Rynkowa Cena Energii Elektrycznej (RCE)",
