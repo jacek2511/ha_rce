@@ -46,7 +46,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
         elif description.key == "tomorrow_data_available":
             entities.append(
-                RCETwitterDataAvailableTomorrowBinarySensor(
+                RCETomorrowDataAvailableBinarySensor(
                     coordinator=coordinator,
                     entry_id=entry.entry_id,
                     description=description,
@@ -96,7 +96,7 @@ class RCECheapNowBinarySensor(RCEBinarySensorBase):
         return {"info": self.coordinator.data.get("api_status", "unknown")}
 
 
-class RCETwitterDataAvailableTomorrowBinarySensor(RCEBinarySensorBase):
+class RCETomorrowDataAvailableBinarySensor(RCEBinarySensorBase):
     """Binary sensor: tomorrow data available."""
 
     @property
