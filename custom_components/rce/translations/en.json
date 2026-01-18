@@ -4,10 +4,13 @@
       "electricity_market_price": { "name": "Electricity Market Price" },
       "next_cheap_window": { "name": "Next Cheap Window Today" },
       "cheapest_price_today": { "name": "Cheapest Price Today" },
-      "cheapest_hour_tomorrow": { "name": "Cheapest Hour Tomorrow" }
+      "cheapest_hour_tomorrow": { "name": "Cheapest Hour Tomorrow" },
+      "api_status": { "name": "API status" },                          
+      "last_successful_update": { "name": "Last successful update" }
     },
     "binary_sensor": {
-      "low_price": { "name": "Low Price" }
+      "low_price": { "name": "Low Price" },
+      "tomorrow_data_available": { "name": "Tomorrow data available" }
     }
   },
   "title": "PSE – Market Electricity Price (RCE)",
