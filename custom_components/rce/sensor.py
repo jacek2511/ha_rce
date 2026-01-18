@@ -1,269 +1,308 @@
 """Platform for RCE (PSE) sensor integration – API v2 with Coordinator."""
 from __future__ import annotations
 
-import logging
-import json
-import requests
+from dataclasses import dataclass
 from datetime import timedelta
-from statistics import mean, median
 
 from homeassistant.components.sensor import (
-    SensorDeviceClass,
     SensorEntity,
+    SensorDeviceClass,
     SensorStateClass,
-)
-from homeassistant.core import HomeAssistant
-from homeassistant import config_entries
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    CoordinatorEntity,
-    UpdateFailed,
+    SensorEntityDescription,
 )
 from homeassistant.util import dt as dt_util
+from homeassistant.const import EntityCategory
 
 from .const import (
     DOMAIN,
     DEFAULT_CURRENCY,
     DEFAULT_PRICE_TYPE,
-    CONF_TIME_RESOLUTION,
-    DEFAULT_TIME_RESOLUTION,
     RESOLUTION_15M,
-    CONF_OPERATION_MODE,
-    DEFAULT_OPERATION_MODE,
-    CONF_PRICE_MODE,
-    DEFAULT_PRICE_MODE,
-    CONF_CUSTOM_PEAK_HOURS_RANGE,
+)
+from .entity import RCEBaseEntity
+
+# ------------------------------------------------------------
+# DESCRIPTIONS
+# ------------------------------------------------------------
+
+@dataclass(frozen=True)
+class RCESensorDescription(SensorEntityDescription):
+    """RCE sensor description."""
+
+
+SENSORS: tuple[RCESensorDescription, ...] = (
+    RCESensorDescription(
+        key="electricity_market_price",
+        translation_key="electricity_market_price",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=f"{DEFAULT_CURRENCY}/{DEFAULT_PRICE_TYPE}",
+    ),
+    RCESensorDescription(
+        key="cheapest_price_today",
+        translation_key="cheapest_price_today",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=f"{DEFAULT_CURRENCY}/{DEFAULT_PRICE_TYPE}",
+    ),
+    RCESensorDescription(
+        key="cheapest_hour_tomorrow",
+        translation_key="cheapest_hour_tomorrow",
+        device_class=SensorDeviceClass.TIMESTAMP,
+    ),
+    RCESensorDescription(
+        key="next_cheap_window",
+        translation_key="next_cheap_window",
+        device_class=SensorDeviceClass.TIMESTAMP,
+    ),
+    RCESensorDescription(
+        key="api_status",
+        translation_key="api_status",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    RCESensorDescription(
+        key="last_successful_update",
+        translation_key="last_successful_update",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
 )
 
-_LOGGER = logging.getLogger(__name__)
 
-URL = (
-    "https://v2.api.raporty.pse.pl/api/rce-pln"
-    "?$filter=business_date eq '{day}'"
-    "&$select=dtime,rce_pln"
-    "&$orderby=dtime"
-)
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: config_entries.ConfigEntry, async_add_entities):
-    """Setup entities based on config entry."""
-    coordinator = RCEDataUpdateCoordinator(hass, config_entry)
-    await coordinator.async_config_entry_first_refresh()
+# ------------------------------------------------------------
+# SETUP
+# ------------------------------------------------------------
 
-    entry_id = config_entry.entry_id
+async def async_setup_entry(hass, entry, async_add_entities):
+    coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities([
-        RCESensor(coordinator, entry_id),
-        RCENextCheapWindowSensor(coordinator, entry_id),
-        RCECheapestPriceTodaySensor(coordinator, entry_id),
-        RCECheapestHourTomorrowSensor(coordinator, entry_id),
-    ])
+    entities: list[SensorEntity] = []
 
-class RCEDataUpdateCoordinator(DataUpdateCoordinator):
-    """Coordinator to fetch data from PSE and calculate low price windows."""
-    def __init__(self, hass, config_entry):
-        self.config_entry = config_entry
-        super().__init__(hass, _LOGGER, name="RCE Coordinator", update_interval=timedelta(minutes=30))
-
-    async def _fetch_day_data(self, offset: int):
-        target_date = dt_util.now() + timedelta(days=offset)
-        date_str = target_date.strftime("%Y-%m-%d")
-        try:
-            response = await self.hass.async_add_executor_job(
-                lambda: requests.get(URL.format(day=date_str), timeout=20)
+    for description in SENSORS:
+        if description.key == "electricity_market_price":
+            entities.append(
+                RCEMarketPriceSensor(coordinator, entry.entry_id, description)
             )
-            if response.status_code == 200:
-                return json.loads(response.text).get("value", [])
-        except Exception as err:
-            _LOGGER.warning("Connection error for %s: %s", date_str, err)
-        return []
+        elif description.key == "cheapest_price_today":
+            entities.append(
+                RCECheapestPriceTodaySensor(coordinator, entry.entry_id, description)
+            )
+        elif description.key == "cheapest_hour_tomorrow":
+            entities.append(
+                RCECheapestHourTomorrowSensor(coordinator, entry.entry_id, description)
+            )
+        elif description.key == "next_cheap_window":
+            entities.append(
+                RCENextCheapWindowSensor(coordinator, entry.entry_id, description)
+            )
+        elif description.key == "api_status":
+            entities.append(
+                RCEApiStatusSensor(coordinator, entry.entry_id, description)
+            )
+        elif description.key == "last_successful_update":
+            entities.append(
+                RCELastSuccessfulUpdateSensor(coordinator, entry.entry_id, description)
+            )
 
-    def _calculate_mask(self, prices, price_mode, options, res, peak_range_str):
-        """Helper to calculate cheap mask for a given price set."""
-        if not prices:
-            return []
-        
-        factor = 4 # Operujemy na 96 punktach
-        full_mask = [False] * len(prices)
-        
-        if price_mode == "ALWAYS ON":
-            return [True] * len(prices)
-            
-        try:
-            start_h, end_h = map(int, peak_range_str.split("-"))
-            start_idx = max(0, start_h * factor)
-            end_idx = min(len(prices), end_h * factor)
-        except Exception:
-            start_idx, end_idx = 0, len(prices)
+    async_add_entities(entities)
 
-        filtered_prices = prices[start_idx:end_idx]
-        temp_mask = [False] * len(filtered_prices)
 
-        if filtered_prices:
-            if price_mode == "LOW PRICE CUTOFF":
-                active_mode = options.get(CONF_OPERATION_MODE, "comfort").lower()
-                p_val = options.get(f"{active_mode}_percentile", 30) / 100.0
-                w_val = options.get(f"{active_mode}_min_window", 2) * factor
-                threshold = sorted(filtered_prices)[int(len(filtered_prices) * p_val)]
-                mask = [p <= threshold for p in filtered_prices]
-                temp_mask = self._apply_min_window(mask, w_val)
+# ------------------------------------------------------------
+# HELPERS
+# ------------------------------------------------------------
 
-            elif price_mode == "CHEAPEST CONSECUTIVE RANGES":
-                count = options.get("consecutive_ranges_count", 4) * (4 if res != RESOLUTION_15M else 1)
-                if len(filtered_prices) >= count:
-                    min_sum, best_start = float('inf'), 0
-                    for i in range(len(filtered_prices) - count + 1):
-                        curr_sum = sum(filtered_prices[i : i + count])
-                        if curr_sum < min_sum:
-                            min_sum, best_start = curr_sum, i
-                    for i in range(best_start, best_start + count): temp_mask[i] = True
-
-            elif "NOT CONSECUTIVE" in price_mode:
-                count = options.get("cheapest_not_consecutive_count", 4) * (4 if res != RESOLUTION_15M else 1)
-                indexed = sorted(enumerate(filtered_prices), key=lambda x: x[1])
-                for i in range(min(count, len(filtered_prices))): temp_mask[indexed[i][0]] = True
-
-        for i, val in enumerate(temp_mask): 
-            if start_idx + i < len(full_mask):
-                full_mask[start_idx + i] = val
-        return full_mask
-
-    async def _async_update_data(self):
-        options = self.config_entry.options
-        res = options.get(CONF_TIME_RESOLUTION, DEFAULT_TIME_RESOLUTION)
-        price_mode = options.get(CONF_PRICE_MODE, DEFAULT_PRICE_MODE)
-        operation_mode = options.get(CONF_OPERATION_MODE, DEFAULT_OPERATION_MODE)                                     
-        peak_range_str = options.get(CONF_CUSTOM_PEAK_HOURS_RANGE, "00-24")
-        
-        raw_today = await self._fetch_day_data(0)
-        if not raw_today:
-            raise UpdateFailed("Brak danych z PSE.")
-
-        prices_today = [float(x["rce_pln"]) for x in raw_today]
-        
-        prices_tomorrow = []
-        if dt_util.now().hour >= 13:
-            raw_tomorrow = await self._fetch_day_data(1)
-            if raw_tomorrow:
-                prices_tomorrow = [float(x["rce_pln"]) for x in raw_tomorrow]
-
-        # Agregacja do 1h
-        if res != RESOLUTION_15M:
-            if len(prices_today) == 96:
-                prices_today = [round(mean(prices_today[i:i+4]), 2) for i in range(0, 96, 4) for _ in range(4)]
-            if len(prices_tomorrow) == 96:
-                prices_tomorrow = [round(mean(prices_tomorrow[i:i+4]), 2) for i in range(0, 96, 4) for _ in range(4)]
-
-        # Obliczanie masek
-        cheap_mask_today = self._calculate_mask(prices_today, price_mode, options, res, peak_range_str)
-        cheap_mask_tomorrow = self._calculate_mask(prices_tomorrow, price_mode, options, res, peak_range_str)
-
-        return {
-            "price_mode": price_mode,                                         
-            "operation_mode": operation_mode,
-            "peak_range" : peak_range_str,
-            "prices_today": prices_today,
-            "prices_tomorrow": prices_tomorrow,
-            "stats": {
-                "average": round(mean(prices_today), 2) if prices_today else 0,
-                "min": min(prices_today) if prices_today else 0,
-                "max": max(prices_today) if prices_today else 0,
-                "median": round(median(prices_today), 2) if prices_today else 0,
-            },
-            "cheap_mask_today": cheap_mask_today,
-            "cheap_mask_tomorrow": cheap_mask_tomorrow,
-            "resolution": res,
-        }
-
-    def _apply_min_window(self, mask, min_len):
-        result = mask[:]
-        start = None
-        for i, val in enumerate(mask + [False]):
-            if val and start is None: start = i
-            elif not val and start is not None:
-                if i - start < min_len:
-                    for j in range(start, min(i, len(result))): result[j] = False
-                start = None
-        return result
-
-def get_current_index(data):
+def get_current_index(data) -> int:
     now = dt_util.now()
-    return now.hour * 4 + (now.minute // 15)
+    res = data.get("resolution", RESOLUTION_15M)
+    factor = 4 if res == RESOLUTION_15M else 1
+    return now.hour * factor + (now.minute // (60 // factor))
 
-class RCESensor(CoordinatorEntity, SensorEntity):
-    _attr_device_class = SensorDeviceClass.MONETARY
-    _attr_state_class = SensorStateClass.TOTAL
-    _attr_has_entity_name = True
-    _attr_translation_key = "electricity_market_price"
 
-    def __init__(self, coordinator, entry_id):
-        super().__init__(coordinator)
-        self._attr_unique_id = f"rce_{entry_id}_electricity_market_price"
-        self.entity_id = "sensor.rce_electricity_market_price"
-        self._attr_native_unit_of_measurement = f"{DEFAULT_CURRENCY}/{DEFAULT_PRICE_TYPE}"
+# ------------------------------------------------------------
+# BASE SENSOR
+# ------------------------------------------------------------
+
+class RCESensorBase(RCEBaseEntity, SensorEntity):
+    """Base class for RCE sensors."""
+
+    def __init__(self, coordinator, entry_id: str, description: SensorEntityDescription):
+        super().__init__(coordinator, entry_id)
+        self.entity_description = description
+        self.entity_id = f"sensor.rce_{description.key}"
+        self._attr_unique_id = f"{entry_id}_{description.key}"
+
+
+# ------------------------------------------------------------
+# SENSORS
+# ------------------------------------------------------------
+
+class RCEMarketPriceSensor(RCESensorBase):
+    """Current electricity market price."""
 
     @property
     def native_value(self):
-        prices = self.coordinator.data.get("prices_today", [])
+        prices = self.coordinator.data.get("prices_today")
+        if not prices:
+            return None
+
         idx = get_current_index(self.coordinator.data)
-        if prices and 0 <= idx < len(prices):
+        if 0 <= idx < len(prices):
             return prices[idx]
+
         return None
 
     @property
     def extra_state_attributes(self):
-        stats = self.coordinator.data.get("stats", {})
+        data = self.coordinator.data
+        stats = data.get("stats", {})
+
         return {
-            "price_mode": self.coordinator.data.get("price_mode"),                               
-            "operation_mode": self.coordinator.data.get("operation_mode"),
-            "peak_range": self.coordinator.data.get("peak_range"),                           
+            "price_mode": data.get("price_mode"),
+            "operation_mode": data.get("operation_mode"),
+            "peak_range": data.get("peak_range"),
             "average": stats.get("average"),
             "min": stats.get("min"),
             "max": stats.get("max"),
             "median": stats.get("median"),
-            "prices_today": self.coordinator.data.get("prices_today"),
-            "cheap_mask_today": self.coordinator.data.get("cheap_mask_today"),                                 
-            "prices_tomorrow": self.coordinator.data.get("prices_tomorrow"),
-            "cheap_mask_tomorrow": self.coordinator.data.get("cheap_mask_tomorrow"),  
+            "prices_today": data.get("prices_today"),
+            "cheap_mask_today": data.get("cheap_mask_today"),
+            "prices_tomorrow": data.get("prices_tomorrow"),
+            "cheap_mask_tomorrow": data.get("cheap_mask_tomorrow"),
         }
 
-class RCENextCheapWindowSensor(CoordinatorEntity, SensorEntity):
-    _attr_has_entity_name = True
-    _attr_translation_key = "next_cheap_window"
-    def __init__(self, coordinator, entry_id):
-        super().__init__(coordinator)
-        self._attr_unique_id = f"rce_{entry_id}_next_cheap_window"
-        self.entity_id = "sensor.rce_next_cheap_window"
+
+class RCECheapestPriceTodaySensor(RCESensorBase):
+    """Cheapest price today."""
+
     @property
     def native_value(self):
-        mask = self.coordinator.data.get("cheap_mask_today", [])
-        idx = get_current_index(self.coordinator.data)
-        for i in range(idx + 1, len(mask)):
-            if mask[i]: return f"{i // 4:02d}:{(i % 4) * 15:02d}"
-        return "N/A"
+        return self.coordinator.data.get("stats", {}).get("min")
 
-class RCECheapestPriceTodaySensor(CoordinatorEntity, SensorEntity):
-    _attr_device_class = SensorDeviceClass.MONETARY
-    _attr_state_class = SensorStateClass.TOTAL
-    _attr_has_entity_name = True
-    _attr_translation_key = "cheapest_price_today"
-    def __init__(self, coordinator, entry_id):
-        super().__init__(coordinator)
-        self._attr_unique_id = f"rce_{entry_id}_cheapest_price_today"
-        self.entity_id = "sensor.rce_cheapest_price_today"
-        self._attr_native_unit_of_measurement = f"{DEFAULT_CURRENCY}/{DEFAULT_PRICE_TYPE}"
+
+class RCECheapestHourTomorrowSensor(RCESensorBase):
+    """Cheapest hour tomorrow."""
+
     @property
-    def native_value(self): return self.coordinator.data.get("stats", {}).get("min")
+    def available(self) -> bool:
+        return True
 
-class RCECheapestHourTomorrowSensor(CoordinatorEntity, SensorEntity):
-    _attr_has_entity_name = True
-    _attr_translation_key = "cheapest_hour_tomorrow" 
-    def __init__(self, coordinator, entry_id):
-        super().__init__(coordinator)
-        self._attr_unique_id = f"rce_{entry_id}_cheapest_hour_tomorrow"
-        self.entity_id = "sensor.rce_cheapest_hour_tomorrow"
     @property
     def native_value(self):
-        prices = self.coordinator.data.get("prices_tomorrow")
-        if not prices: return "N/A"
+        data = self.coordinator.data
+        if not data or data.get("api_status") != "ok":
+            return None
+            
+        prices = data.get("prices_tomorrow")
+        if not prices:
+            return None
+
+        res = data.get("resolution", RESOLUTION_15M)
+        factor = 4 if res == RESOLUTION_15M else 1
+
         idx = prices.index(min(prices))
-        return f"{idx // 4:02d}:{(idx % 4) * 15:02d}"
+        hour = idx // factor
+        minute = (idx % factor) * (60 // factor)
+
+        # Kluczowe dla uniknięcia "13 godzin temu"
+        tomorrow = dt_util.now() + timedelta(days=1)
+        
+        return tomorrow.replace(
+            hour=hour,
+            minute=minute,
+            second=0,
+            microsecond=0,
+        )
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data or {}
+        
+        if data.get("api_status") != "ok":
+            return {"info": "API error"}
+
+        if not data.get("prices_tomorrow"):
+            return {"info": "Waiting for tomorrow data"}
+        
+        return {"info": "API ok"}
+
+    @property
+    def icon(self) -> str:
+        data = self.coordinator.data or {}
+        if data.get("api_status") != "ok":
+            return "mdi:alert-circle-outline"
+        if not data.get("prices_tomorrow"):
+            return "mdi:clock-wait"
+        return "mdi:cash-clock"
+
+
+class RCENextCheapWindowSensor(RCESensorBase):
+    """Next cheap window today."""
+
+    @property                                                                                      
+    def available(self) -> bool:                                                                   
+        return True                                                                                
+
+    @property
+    def native_value(self):
+        data = self.coordinator.data
+        mask = data.get("cheap_mask_today")
+
+        if not mask:
+            return None
+
+        res = data.get("resolution", RESOLUTION_15M)
+        factor = 4 if res == RESOLUTION_15M else 1
+
+        now = dt_util.now()
+        idx = get_current_index(data)
+
+        if 0 <= idx < len(mask) and mask[idx]:
+            hour = idx // factor
+            minute = (idx % factor) * (60 // factor)
+            return now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+        for i in range(idx + 1, len(mask)):
+            if mask[i]:
+                hour = i // factor
+                minute = (i % factor) * (60 // factor)
+                return now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+        return None
+
+    @property
+    def extra_state_attributes(self):
+        has_window = self.native_value is not None
+        
+        return {
+            "info": "No cheap windows available today" if not has_window else "Cheap window found",
+            "cheap_window_available": has_window
+        }
+
+
+class RCEApiStatusSensor(RCESensorBase):
+    """Diagnostic sensor: API status."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def native_value(self) -> str:
+        return self.coordinator.data.get("api_status", "unknown")
+
+    @property
+    def available(self) -> bool:
+        return True
+
+class RCELastSuccessfulUpdateSensor(RCESensorBase):
+    """Diagnostic sensor: last successful API update."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def native_value(self):
+        return self.coordinator.last_successful_update
+
+    @property
+    def available(self) -> bool:
+        return True
+        
