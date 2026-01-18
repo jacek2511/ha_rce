@@ -12,7 +12,7 @@ set_operation_mode:
             - "LOW PRICE CUTOFF"
             - "CHEAPEST CONSECUTIVE RANGES"
             - "CHEAPEST RANGES (NOT CONSECUTIVE)"
-            - "always_on"
+            - "ALWAYS ON"
     mode:
       name: Profile (for Cutoff)
       description: Active profile for LOW PRICE CUTOFF method.
