@@ -13,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 # =========================================================
 # GENERAL SETTINGS
 # =========================================================
-SCAN_INTERVAL = timedelta(minutes=15)
+SCAN_INTERVAL = timedelta(minutes=30)
 
 DEFAULT_CURRENCY: Final = "PLN"
 DEFAULT_PRICE_TYPE: Final = "MWh"
@@ -22,7 +22,7 @@ DEFAULT_PRICE_TYPE: Final = "MWh"
 # TIME RESOLUTION
 # =========================================================
 CONF_TIME_RESOLUTION: Final = "time_resolution"
-RESOLUTION_15M: Final = "15m"
+RESOLUTION_15M: Final = "15min"
 RESOLUTION_1H: Final = "1h"
 
 DEFAULT_TIME_RESOLUTION: Final = RESOLUTION_15M
@@ -35,7 +35,6 @@ CONF_OPERATION_MODE: Final = "operation_mode"
 CONF_CUSTOM_PEAK_HOURS_RANGE: Final = "custom_peak_hours_range"
 CONF_NEGATIVE_PRICES: Final = "negative_prices"
 
-# Klucze dla suwaków trybów ilościowych
 CONF_CONSECUTIVE_COUNT: Final = "consecutive_ranges_count"
 CONF_NOT_CONSECUTIVE_COUNT: Final = "cheapest_not_consecutive_count"
 
