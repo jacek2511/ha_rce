@@ -282,6 +282,7 @@ All integration settings are available in the options in the integration configu
 
 ### Binary Sensor
 * rce_low_price
+* tomorrow_data_available
 
 ### Sensors
 * rce_cheapest_price_today
