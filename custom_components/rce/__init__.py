@@ -3,61 +3,84 @@ from __future__ import annotations
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.typing import ConfigType
 from homeassistant.const import Platform
 
-from .const import (
-    DOMAIN, 
-    _LOGGER, 
-    CONF_OPERATION_MODE, 
-    CONF_PRICE_MODE
-)
+from .const import *
+from .coordinator import RCEDataUpdateCoordinator
 
-PLATFORMS: list[Platform] = [
-    Platform.SENSOR,
-    Platform.BINARY_SENSOR,
-]
+PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up integration via YAML (not supported, but registers services)."""
+async def async_setup(hass: HomeAssistant, config) -> bool:
+    """Konfiguracja domeny (rejestracja usług)."""
     
     async def set_mode(call):
-        mode = call.data.get("mode")
-        price_mode = call.data.get("price_mode")
-        
+        """Zmiana trybów pracy przez usługę rce.set_operation_mode."""
         for entry in hass.config_entries.async_entries(DOMAIN):
+            # Tworzymy kopię obecnych opcji
             new_options = dict(entry.options)
-            
-            # Aktualizujemy pod-tryb (comfort, eco itp.) jeśli podano
-            if mode:
-                new_options[CONF_OPERATION_MODE] = mode
-            
-            # Aktualizujemy główny tryb (low_price_cutoff, always_on itp.) jeśli podano
-            if price_mode:
-                new_options[CONF_PRICE_MODE] = price_mode
 
-            hass.config_entries.async_update_entry(
-                entry,
-                options=new_options,
-            )
+            # Mapujemy dane z wywołania usługi na klucze konfiguracji
+            if "mode" in call.data:
+                new_options[CONF_OPERATION_MODE] = call.data["mode"]
+            if "price_mode" in call.data:
+                new_options[CONF_PRICE_MODE] = call.data["price_mode"]
 
-    hass.services.async_register(DOMAIN, "set_operation_mode", set_mode)
+            # Aktualizacja wywoła automatycznie listener _reload
+            hass.config_entries.async_update_entry(entry, options=new_options)
+
+    hass.services.async_register(
+        DOMAIN,
+        "set_operation_mode",
+        set_mode,
+    )
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up RCE from a config entry."""
-    _LOGGER.info("Setting up RCE config entry: %s", entry.entry_id)
+    """Konfiguracja konkretnej instancji z UI."""
+    
+    # 1. Zapewnienie domyślnych opcji (jeśli puste)
+    if not entry.options:
+        hass.config_entries.async_update_entry(
+            entry,
+            options={
+                CONF_TIME_RESOLUTION: DEFAULT_TIME_RESOLUTION,
+                CONF_PRICE_MODE: DEFAULT_PRICE_MODE,
+                CONF_OPERATION_MODE: DEFAULT_OPERATION_MODE,
+                CONF_NEGATIVE_PRICES: DEFAULT_NEGATIVE_PRICES,
+                CONF_CUSTOM_PEAK_HOURS_RANGE: DEFAULT_CUSTOM_PEAK_HOURS_RANGE,
+                # Warto tu dodać domyślne percentyle, by koordynator miał na czym pracować
+                "comfort_percentile": 30,
+                "comfort_min_window": 2,
+                "consecutive_ranges_count": 4,
+                "cheapest_not_consecutive_count": 4,
+            }
+        )
 
+    coordinator = RCEDataUpdateCoordinator(hass, entry)
+    
+    # Pierwsze pobranie danych
+    await coordinator.async_config_entry_first_refresh()
+
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    # Rejestracja platform (sensor, binary_sensor)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    entry.async_on_unload(entry.add_update_listener(update_listener))
-
+    
+    # Rejestracja listenera zmian w Options Flow
+    entry.async_on_unload(entry.add_update_listener(_reload))
+    
     return True
 
-async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def _reload(hass: HomeAssistant, entry: ConfigEntry):
+    """Przeładuj integrację po zmianie opcji."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    _LOGGER.info("Unloading RCE config entry: %s", entry.entry_id)
+    """Usunięcie instancji."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id)
+    return unload_ok
+    
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
