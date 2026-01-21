@@ -114,9 +114,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 def get_current_index(data) -> int:
     now = dt_util.now()
-    res = data.get("resolution", RESOLUTION_15M)
-    factor = 4 if res == RESOLUTION_15M else 1
-    return now.hour * factor + (now.minute // (60 // factor))
+    return now.hour * 4 + (now.minute // 15)
 
 
 # ------------------------------------------------------------
