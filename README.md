@@ -40,103 +40,124 @@ Comfort: Wider operating windows, ensuring stability while maintaining low costs
 📊 ApexCharts Visualization
 To see real-time prices and cheap windows on your dashboard, use the following ApexCharts code:
 ```
-type: custom:config-template-card
-variables:
-  AVG: >-
-    parseFloat(states['sensor.rce_electricity_market_price']?.attributes?.average)
-    || 400
-entities:
-  - sensor.rce_electricity_market_price
-card:
-  type: custom:apexcharts-card
-  update_interval: 10sec
-  header:
-    show: true
-    title: Rynek RCE (15-min)
-    show_states: true
-    colorize_states: true
-  graph_span: 24h
-  span:
-    start: day
-  now:
-    show: true
-    label: Teraz
-  apex_config:
-    chart:
-      height: 350
-      stacked: true
-    stroke:
-      dashArray:
-        - 0
-        - 5
-        - 0
-        - 0
-        - 0
-  series:
-    - entity: sensor.rce_electricity_market_price
-      name: Cena aktualna
-      type: area
-      color: "#2196f3"
-      stroke_width: 2
-      data_generator: >
-        return entity.attributes.prices_today.map((p, i) => [new
-        Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), p]);
-    - entity: sensor.rce_electricity_market_price
-      name: Średnia dziś
-      type: line
-      color: "#9e9e9e"
-      stroke_width: 2
-      data_generator: >
-        const avg = entity.attributes.average;
-
-        return entity.attributes.prices_today.map((_, i) => [new
-        Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), avg]);
-    - entity: sensor.rce_electricity_market_price
-      name: Drogo
-      type: column
-      color: "#e53935"
-      opacity: 0.4
-      stroke_width: 2
-      show:
-        in_header: false
-      data_generator: |
-        const prices = entity.attributes.prices_today;
-        const avg = entity.attributes.average;
-        const mask = entity.attributes.cheap_mask_today;
-        return prices.map((p, i) => {
-          const isCheap = String(mask[i]).toLowerCase() === 'true';
-          return [new Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), (p > avg && !isCheap) ? p : 0];
-        });
-    - entity: sensor.rce_electricity_market_price
-      name: Normalnie
-      type: column
-      color: "#2196f3"
-      opacity: 0.4
-      show:
-        in_header: false
-      data_generator: |
-        const prices = entity.attributes.prices_today;
-        const avg = entity.attributes.average;
-        const mask = entity.attributes.cheap_mask_today;
-        return prices.map((p, i) => {
-          const isCheap = String(mask[i]).toLowerCase() === 'true';
-          return [new Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), (p <= avg && !isCheap) ? p : 0];
-        });
-    - entity: sensor.rce_electricity_market_price
-      name: Tanie okno
-      type: column
-      color: "#4caf50"
-      opacity: 0.7
-      stroke_width: 2
-      show:
-        in_header: false
-      data_generator: |
-        const prices = entity.attributes.prices_today;
-        const mask = entity.attributes.cheap_mask_today;
-        return prices.map((p, i) => {
-          const isCheap = String(mask[i]).toLowerCase() === 'true';
-          return [new Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), isCheap ? p : 0];
-        });
+type: custom:apexcharts-card
+update_interval: 5min
+header:
+  show: true
+  title: Rynek RCE - Dzisiaj
+  show_states: true
+  colorize_states: true
+  standard_format: true
+graph_span: 24h
+span:
+  start: day
+now:
+  show: true
+  label: Teraz
+series:
+  - entity: sensor.rce_electricity_market_price
+    name: Minimalna
+    show:
+      in_chart: false
+      in_header: true
+      legend_value: false
+    transform: |
+      const minPrice = entity.attributes.min;
+      return minPrice;  
+  - entity: sensor.rce_electricity_market_price
+    name: Aktualna
+    show:
+      in_chart: false
+      in_header: true
+      legend_value: false
+    data_generator: |
+      const prices = entity.attributes.prices_today;
+      const now = new Date();
+      const index = (now.getHours() * 4) + Math.floor(now.getMinutes() / 15);
+      const currentPrice = prices[index];
+      return [[now.getTime(), currentPrice]];
+  - entity: sensor.rce_electricity_market_price
+    name: Maksymalna
+    show:
+      in_chart: false
+      in_header: true
+      legend_value: false
+    transform: |
+      const maxPrice = entity.attributes.max;
+      return maxPrice;
+  - entity: sensor.rce_electricity_market_price
+    name: Cena aktualna
+    type: area
+    color: "#2196f3"
+    stroke_width: 2
+    show:
+      extremas: false
+      datalabels: false
+      in_header: false
+      hidden_by_default: true
+    data_generator: >
+      return entity.attributes.prices_today.map((p, i) => [new
+      Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), p]);
+  - entity: sensor.rce_electricity_market_price
+    name: Średnia
+    type: line
+    color: "#9e9e9e"
+    stroke_width: 2
+    show:
+      legend_value: true
+    data_generator: >
+      const avg = entity.attributes.average; return
+      entity.attributes.prices_today.map((_, i) => [new
+      Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), avg]);
+  - entity: sensor.rce_electricity_market_price
+    name: "Drogo "
+    type: column
+    color: "#e53935"
+    opacity: 0.8
+    stroke_width: 2
+    show:
+      in_header: false
+      legend_value: false
+    data_generator: |
+      const prices = entity.attributes.prices_today;
+      const avg = entity.attributes.average;
+      const mask = entity.attributes.cheap_mask_today;
+      return prices.map((p, i) => {
+        const isCheap = String(mask[i]).toLowerCase() === 'true';
+        return [new Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), (p > avg && !isCheap) ? p : 0];
+      });
+  - entity: sensor.rce_electricity_market_price
+    name: "Normalnie "
+    type: column
+    color: "#2196f3"
+    opacity: 0.8
+    show:
+      in_header: false
+      legend_value: false
+    data_generator: |
+      const prices = entity.attributes.prices_today;
+      const avg = entity.attributes.average;
+      const mask = entity.attributes.cheap_mask_today;
+      return prices.map((p, i) => {
+        const isCheap = String(mask[i]).toLowerCase() === 'true';
+        return [new Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), (p <= avg && !isCheap) ? p : 0];
+      });
+  - entity: sensor.rce_electricity_market_price
+    name: "Tanie okno "
+    type: column
+    color: "#4caf50"
+    opacity: 0.8
+    stroke_width: 2
+    show:
+      in_header: false
+      legend_value: false
+    data_generator: |
+      const prices = entity.attributes.prices_today;
+      const mask = entity.attributes.cheap_mask_today;
+      return prices.map((p, i) => {
+        const isCheap = String(mask[i]).toLowerCase() === 'true';
+        return [new Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), isCheap ? p : 0];
+      });
 ```
 
 🎮 Quick Control: Mode Selection Buttons
