@@ -13,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 # =========================================================
 # GENERAL SETTINGS
 # =========================================================
-SCAN_INTERVAL = timedelta(minutes=30)
+SCAN_INTERVAL = timedelta(minutes=15)
 
 DEFAULT_CURRENCY: Final = "PLN"
 DEFAULT_PRICE_TYPE: Final = "MWh"
