@@ -2,6 +2,7 @@
   "entity": {
     "sensor": {
       "electricity_market_price": { "name": "Rynkowa cena energii" },
+      "next_price": { "name": "Następna cena" },
       "next_cheap_window": { "name": "Następne tanie okno dzisiaj" },
       "cheapest_price_today": { "name": "Najniższa cena dzisiaj" },
       "cheapest_hour_tomorrow": { "name": "Najtańsza godzina jutro" },
