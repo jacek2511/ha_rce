@@ -39,6 +39,13 @@ SENSORS: tuple[RCESensorDescription, ...] = (
         native_unit_of_measurement=f"{DEFAULT_CURRENCY}/{DEFAULT_PRICE_TYPE}",
     ),
     RCESensorDescription(
+        key="next_price",
+        translation_key="next_price",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=f"{DEFAULT_CURRENCY}/{DEFAULT_PRICE_TYPE}",
+    ),
+    RCESensorDescription(
         key="cheapest_price_today",
         translation_key="cheapest_price_today",
         device_class=SensorDeviceClass.MONETARY,
@@ -83,6 +90,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
         if description.key == "electricity_market_price":
             entities.append(
                 RCEMarketPriceSensor(coordinator, entry.entry_id, description)
+            )
+        elif description.key == "next_price":
+            entities.append(
+                RCENextPriceSensor(coordinator, entry.entry_id, description)
             )
         elif description.key == "cheapest_price_today":
             entities.append(
@@ -168,6 +179,24 @@ class RCEMarketPriceSensor(RCESensorBase):
             "prices_tomorrow": data.get("prices_tomorrow"),
             "cheap_mask_tomorrow": data.get("cheap_mask_tomorrow"),
         }
+
+
+class RCENextPriceSensor(RCESensorBase):
+    """Next price."""
+
+    @property
+    def native_value(self):
+        prices = self.coordinator.data.get("prices_today")
+        if not prices:
+            return None
+
+        idx = get_current_index(self.coordinator.data) + 1
+        if 0 <= idx < len(prices):
+            return prices[idx]
+        elif idx = len(prices):
+            return self.coordinator.data.get("prices_tomorrow")[0]
+
+        return None
 
 
 class RCECheapestPriceTodaySensor(RCESensorBase):
@@ -276,7 +305,6 @@ class RCENextCheapWindowSensor(RCESensorBase):
             "info": "No cheap windows available today" if not has_window else "Cheap window found",
             "cheap_window_available": has_window
         }
-
 
 class RCEApiStatusSensor(RCESensorBase):
     """Diagnostic sensor: API status."""
