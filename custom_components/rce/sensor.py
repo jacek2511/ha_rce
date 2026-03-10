@@ -193,7 +193,7 @@ class RCENextPriceSensor(RCESensorBase):
         idx = get_current_index(self.coordinator.data) + 1
         if 0 <= idx < len(prices):
             return prices[idx]
-        elif idx = len(prices):
+        elif idx == len(prices):
             return self.coordinator.data.get("prices_tomorrow")[0]
 
         return None
