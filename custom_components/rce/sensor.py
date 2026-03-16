@@ -174,6 +174,7 @@ class RCEMarketPriceSensor(RCESensorBase):
             "min": stats.get("min"),
             "max": stats.get("max"),
             "median": stats.get("median"),
+            "max_low_price": stats.get("max_low_price"),
             "prices_today": data.get("prices_today"),
             "cheap_mask_today": data.get("cheap_mask_today"),
             "prices_tomorrow": data.get("prices_tomorrow"),
