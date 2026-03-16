@@ -241,6 +241,8 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
             # SUCCESS
             # -----------------------
             self.last_successful_update = now
+            low_prices = [p for p, mask in zip(prices_today, cheap_mask_today) if mask]
+            max_low_price = max(low_prices) if low_prices else 0.0                     
 
             return {
                 "api_status": "ok",
@@ -258,6 +260,7 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
                     "min": min(prices_today),
                     "max": max(prices_today),
                     "median": round(median(prices_today), 2),
+                    "max_low_price": max_low_price,
                 },
             }
  
