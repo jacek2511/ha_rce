@@ -218,15 +218,38 @@ class RCEWindowBaseSensor(RCESensorBase):
 # ============================================================
 # CORE SENSORS
 # ============================================================
-class RCEMarketPriceSensor(RCESensorBase):
-    @property
-    def native_value(self):
-        prices = self.coordinator.data.get("prices_today")
-        if not prices:
-            return None
-
-        idx = get_current_index()
-        return prices[idx] if idx < len(prices) else None
+class RCEMarketPriceSensor(RCESensorBase):                                                             
+    """Current electricity market price."""                                                            
+                                                                                                       
+    @property                                                                                          
+    def native_value(self):                                                                            
+        prices = self.coordinator.data.get("prices_today")                                             
+        if not prices:                                                                                 
+            return None                                                                                
+                                                                                                       
+        idx = get_current_index()                                                                      
+        return prices[idx] if idx < len(prices) else None                                              
+                                                                                                       
+    @property                                                                                          
+    def extra_state_attributes(self):                                                                  
+        data = self.coordinator.data or {}                                                             
+        stats = data.get("stats", {})                                                                  
+                                                                                                       
+        return {                                                                                       
+            "price_mode": data.get("price_mode"),                                                      
+            "operation_mode": data.get("operation_mode"),                                              
+            "peak_range": data.get("peak_range"),                                                      
+            "average": stats.get("average"),                                                           
+            "min": stats.get("min"),                                                                   
+            "max": stats.get("max"),                                                                   
+            "median": stats.get("median"),                                                             
+            "low_price_cutoff": data.get("low_price_cutoff"),                                          
+            "prices_today": data.get("prices_today"),                                                  
+            "cheap_mask_today": data.get("cheap_mask_today"),                                          
+            "prices_tomorrow": data.get("prices_tomorrow"),                                            
+            "cheap_mask_tomorrow": data.get("cheap_mask_tomorrow"),                                    
+        }                                                                                              
+                                                            
 
 class RCENextPriceSensor(RCESensorBase):
     @property
@@ -249,21 +272,25 @@ class RCENextPriceSensor(RCESensorBase):
 # ============================================================
 # WINDOW SENSORS
 # ============================================================
-class RCENextCheapWindowSensor(RCEWindowBaseSensor):
-    day_key = "today"
-
-    @property
-    def native_value(self):
-        mask, _, data = self._get_data()
-        if not mask:
-            return None
-
-        start, end = find_next_window(mask, 0)
-        if start is None:
-            return None
-
-        return format_range(start, end, self._factor(data))
-
+class RCENextCheapWindowSensor(RCEWindowBaseSensor):                                                   
+    day_key = "today"                                                                                  
+                                                                                                       
+    def _start_index(self):                                                                            
+        return get_current_index() if self.day_key == "today" else 0                                   
+                                                                                                       
+    @property                                                                                          
+    def native_value(self):                                                                            
+        mask, _, data = self._get_data()                                                               
+        if not mask:                                                                                   
+            return None                                                                                
+                                                                                                       
+        start, end = find_next_window(mask, self._start_index())                                       
+                                                                                                       
+        if start is None:                                                                              
+            return None                                                                                
+                                                                                                       
+        return format_range(start, end, self._factor(data)) 
+        
 class RCENextCheapWindowTomorrowSensor(RCENextCheapWindowSensor):
     day_key = "tomorrow"
 
