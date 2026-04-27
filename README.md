@@ -217,17 +217,47 @@ cards:
 
 ---
 
-## 💡 Notes & Use Cases
-> [!IMPORTANT]
-> * **Tomorrow data** becomes available only after PSE publishes it (usually early afternoon).
-> * All window calculations depend on your selected **Price Mode** and **Operation Mode**.
+Oto sformatowany plik `README.md`, zoptymalizowany pod kątem czytelności w repozytorium GitHub:
 
-**🧠 Example Use Cases:**
+---
+
+## ⚙️ Configuration
+
+All integration settings are available in the options within the **integration configuration panel**.
+
+---
+
+## 🧩 Available Components
+
+### 🟢 Binary Sensor
+* `rce_low_price`
+* `tomorrow_data_available`
+
+### 📊 Sensors
+
+| Category | Entity ID |
+| :--- | :--- |
+| **Core** | `sensor.rce_electricity_market_price`, `sensor.rce_next_price` |
+| **Today** | `sensor.rce_cheapest_price_today`, `sensor.rce_next_cheap_window`, `sensor.rce_best_window_today`, `sensor.rce_top3_windows_today` |
+| **Tomorrow** 🆕 | `sensor.rce_cheapest_hour_tomorrow`, `sensor.rce_next_cheap_window_tomorrow`, `sensor.rce_best_window_tomorrow`, `sensor.rce_top3_windows_tomorrow` |
+| **Diagnostics** | `sensor.rce_api_status`, `sensor.rce_last_successful_update` |
+
+---
+
+## 💡 Notes
+> [!IMPORTANT]
+> * **Tomorrow data** becomes available only after PSE publishes it.
+> * All calculations depend on the selected **Price Mode** and **Operation Mode**.
+
+---
+
+## 🧠 Example Use Cases
+
 * **Optimization:** Run dishwasher in the `best window today`.
 * **EV Charging:** Charge EV using `top 3 cheapest windows tomorrow`.
 * **Smart Heating:** Heat water only during `cheap mask periods`.
 * **Load Shifting:** Delay heavy loads until the `next cheap window`.
-
+ 
 ---
 
 [hacs]: https://hacs.xyz
