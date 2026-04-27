@@ -238,6 +238,29 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
             )
 
             # -----------------------
+            # WINDOWS ANALYSIS
+            # -----------------------
+            windows_today = self._build_windows_data(prices_today, cheap_mask_today)
+            windows_today_sorted = sorted(windows_today, key=lambda x: x["avg"])
+            best_window_today = windows_today_sorted[0] if windows_today_sorted else None
+            top3_windows_today = windows_today_sorted[:3]
+
+            # -----------------------
+            # WINDOWS TOMORROW
+            # -----------------------
+            best_window_tomorrow = None
+            top_windows_tomorrow = []
+
+            if prices_tomorrow:
+                windows = self._build_windows_data(prices_tomorrow, cheap_mask_tomorrow)
+                if windows:
+                    # BEST
+                    best_window_tomorrow = min(windows, key=lambda x: x["avg"])
+                    # TOP3
+                    top_windows_tomorrow = sorted(windows, key=lambda x: x["avg"])[:3]
+
+
+            # -----------------------
             # SUCCESS
             # -----------------------
             self.last_successful_update = now
@@ -252,8 +275,13 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
                 "peak_range": peak_range,
                 "prices_today": prices_today,
                 "cheap_mask_today": cheap_mask_today,
+                "windows_today": windows_today,
+                "best_window_today": best_window_today,
+                "top3_windows_today": top3_windows_today,
                 "prices_tomorrow": prices_tomorrow or [],
                 "cheap_mask_tomorrow": cheap_mask_tomorrow,
+                "best_window_tomorrow": best_window_tomorrow,
+                "top_windows_tomorrow": top_windows_tomorrow,
                 "resolution": res,
                 "stats": {
                     "average": round(mean(prices_today), 2),
@@ -271,3 +299,55 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
             self.data["api_status"] = "error"
 
             raise UpdateFailed(f"RCE API error: {err}") from err
+
+
+    def _extract_windows(self, mask: list[bool]):
+        """Extract continuous True segments from mask."""
+        if not mask:
+            return []
+
+        windows = []
+        start = None
+
+        for i, val in enumerate(mask + [False]):  # sentinel False na końcu
+            if val and start is None:
+                start = i
+            elif not val and start is not None:
+                windows.append((start, i))
+                start = None
+
+        return windows
+
+
+    def _build_windows_data(self, prices: list[float], mask: list[bool]):
+        """Build window statistics based on mask."""
+        if not prices or not mask:
+            return []
+
+        if len(prices) != len(mask):
+            _LOGGER.warning(
+                "Prices and mask length mismatch (%s vs %s)",
+                len(prices),
+                len(mask),
+            )
+            return []
+
+        windows = self._extract_windows(mask)
+        result = []
+
+        for start, end in windows:
+            segment = prices[start:end]
+
+            if not segment:
+                continue
+
+            result.append({
+                "start": start,
+                "end": end,
+                "avg": round(mean(segment), 2),
+                "min": min(segment),
+                "max": max(segment),
+                "length": end - start,   # 👈 NOWE (przyda się do rankingów)
+            })
+
+        return result
