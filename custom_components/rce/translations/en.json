@@ -4,9 +4,14 @@
       "electricity_market_price": { "name": "Electricity Market Price" },
       "next_price": { "name": "Next Price" },
       "next_cheap_window": { "name": "Next Cheap Window Today" },
+      "next_cheap_window_tomorrow": { "name": "Next Cheap Window Tomorrow" },
       "cheapest_price_today": { "name": "Cheapest Price Today" },
       "cheapest_hour_tomorrow": { "name": "Cheapest Hour Tomorrow" },
-      "api_status": { "name": "API status" },                          
+      "best_window_today": { "name": "Best Window Today" },
+      "top3_windows_today": { "name": "Top 3 Cheapest Windows Today" },
+      "best_window_tomorrow": { "name": "Best Window Tomorrow" },
+      "top3_windows_tomorrow": { "name": "Top 3 Windows Tomorrow" },
+      "api_status": { "name": "API status" },
       "last_successful_update": { "name": "Last successful update" }
     },
     "binary_sensor": {
