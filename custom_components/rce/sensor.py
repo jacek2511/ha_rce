@@ -1,7 +1,8 @@
-"""Platform for RCE (PSE) sensor integration – API v2 with Coordinator."""
+"""RCE sensors"""
 from __future__ import annotations
 
 from dataclasses import dataclass
+from statistics import mean
 from datetime import timedelta
 
 from homeassistant.components.sensor import (
@@ -10,8 +11,8 @@ from homeassistant.components.sensor import (
     SensorStateClass,
     SensorEntityDescription,
 )
-from homeassistant.util import dt as dt_util
 from homeassistant.const import EntityCategory
+from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
@@ -21,16 +22,17 @@ from .const import (
 )
 from .entity import RCEBaseEntity
 
-# ------------------------------------------------------------
-# DESCRIPTIONS
-# ------------------------------------------------------------
 
+# ============================================================
+# DESCRIPTIONS
+# ============================================================
 @dataclass(frozen=True)
 class RCESensorDescription(SensorEntityDescription):
-    """RCE sensor description."""
+    pass
 
 
 SENSORS: tuple[RCESensorDescription, ...] = (
+    # --- PRICES ---
     RCESensorDescription(
         key="electricity_market_price",
         translation_key="electricity_market_price",
@@ -60,8 +62,29 @@ SENSORS: tuple[RCESensorDescription, ...] = (
     RCESensorDescription(
         key="next_cheap_window",
         translation_key="next_cheap_window",
-        device_class=SensorDeviceClass.TIMESTAMP,
     ),
+    RCESensorDescription(
+        key="next_cheap_window_tomorrow",
+        translation_key="next_cheap_window_tomorrow",
+    ),
+    RCESensorDescription(
+        key="best_window_today",
+        translation_key="best_window_today",
+    ),
+    RCESensorDescription(
+        key="best_window_tomorrow",
+        translation_key="best_window_tomorrow",
+    ),
+    RCESensorDescription(
+        key="top3_windows_today",
+        translation_key="top3_windows_today",
+    ),
+    RCESensorDescription(
+        key="top3_windows_tomorrow",
+        translation_key="top3_windows_tomorrow",
+    ),
+    
+    # --- DIAGNOSTICS ---
     RCESensorDescription(
         key="api_status",
         translation_key="api_status",
@@ -75,261 +98,295 @@ SENSORS: tuple[RCESensorDescription, ...] = (
     ),
 )
 
-
-
-# ------------------------------------------------------------
+# ============================================================
 # SETUP
-# ------------------------------------------------------------
-
+# ============================================================
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities: list[SensorEntity] = []
 
     for description in SENSORS:
-        if description.key == "electricity_market_price":
-            entities.append(
-                RCEMarketPriceSensor(coordinator, entry.entry_id, description)
-            )
-        elif description.key == "next_price":
-            entities.append(
-                RCENextPriceSensor(coordinator, entry.entry_id, description)
-            )
-        elif description.key == "cheapest_price_today":
-            entities.append(
-                RCECheapestPriceTodaySensor(coordinator, entry.entry_id, description)
-            )
-        elif description.key == "cheapest_hour_tomorrow":
-            entities.append(
-                RCECheapestHourTomorrowSensor(coordinator, entry.entry_id, description)
-            )
-        elif description.key == "next_cheap_window":
-            entities.append(
-                RCENextCheapWindowSensor(coordinator, entry.entry_id, description)
-            )
-        elif description.key == "api_status":
-            entities.append(
-                RCEApiStatusSensor(coordinator, entry.entry_id, description)
-            )
-        elif description.key == "last_successful_update":
-            entities.append(
-                RCELastSuccessfulUpdateSensor(coordinator, entry.entry_id, description)
-            )
+        key = description.key
+
+        if key == "electricity_market_price":
+            entities.append(RCEMarketPriceSensor(coordinator, entry.entry_id, description))
+
+        elif key == "next_price":
+            entities.append(RCENextPriceSensor(coordinator, entry.entry_id, description))
+
+        elif key == "cheapest_price_today":
+            entities.append(RCECheapestPriceTodaySensor(coordinator, entry.entry_id, description))
+
+        elif key == "cheapest_hour_tomorrow":
+            entities.append(RCECheapestHourTomorrowSensor(coordinator, entry.entry_id, description))
+
+        elif key == "next_cheap_window":
+            entities.append(RCENextCheapWindowSensor(coordinator, entry.entry_id, description))
+
+        elif key == "next_cheap_window_tomorrow":
+            entities.append(RCENextCheapWindowTomorrowSensor(coordinator, entry.entry_id, description))
+
+        elif key == "best_window_today":
+            entities.append(RCEBestWindowTodaySensor(coordinator, entry.entry_id, description))
+
+        elif key == "best_window_tomorrow":
+            entities.append(RCEBestWindowTomorrowSensor(coordinator, entry.entry_id, description))
+
+        elif key == "top3_windows_today":
+            entities.append(RCETop3WindowsTodaySensor(coordinator, entry.entry_id, description))
+
+        elif key == "top3_windows_tomorrow":
+            entities.append(RCETop3WindowsTomorrowSensor(coordinator, entry.entry_id, description))
+
+        elif key == "api_status":
+            entities.append(RCEApiStatusSensor(coordinator, entry.entry_id, description))
+
+        elif key == "last_successful_update":
+            entities.append(RCELastSuccessfulUpdateSensor(coordinator, entry.entry_id, description))
 
     async_add_entities(entities)
 
 
-# ------------------------------------------------------------
+# ============================================================
 # HELPERS
-# ------------------------------------------------------------
-
-def get_current_index(data) -> int:
+# ============================================================
+def get_current_index():
     now = dt_util.now()
     return now.hour * 4 + (now.minute // 15)
 
+def idx_to_time(i, factor):
+    h = i // factor
+    m = (i % factor) * (60 // factor)
+    return f"{h:02d}:{m:02d}"
 
-# ------------------------------------------------------------
-# BASE SENSOR
-# ------------------------------------------------------------
+def format_range(start, end, factor):
+    return f"{idx_to_time(start, factor)} - {idx_to_time(end, factor)}"
 
+def find_next_window(mask, start_idx):
+    if not mask:
+        return None, None
+
+    start = None
+    end = None
+    for i in range(start_idx, len(mask)):
+        if mask[i]:
+            start = i
+            break
+
+    if start is None:
+        return None, None
+
+    for i in range(start, len(mask)):
+        if not mask[i]:
+            end = i
+            break
+
+    if end is None:
+        end = len(mask)
+
+    return start, end
+
+# ============================================================
+# BASE
+# ============================================================
 class RCESensorBase(RCEBaseEntity, SensorEntity):
-    """Base class for RCE sensors."""
-
-    def __init__(self, coordinator, entry_id: str, description: SensorEntityDescription):
+    def __init__(self, coordinator, entry_id, description):
         super().__init__(coordinator, entry_id)
         self.entity_description = description
-        self.entity_id = f"sensor.rce_{description.key}"
         self._attr_unique_id = f"{entry_id}_{description.key}"
+        self.entity_id = f"sensor.rce_{description.key}"
 
+    @property
+    def available(self):
+        return self.coordinator.data is not None
 
-# ------------------------------------------------------------
-# SENSORS
-# ------------------------------------------------------------
+class RCEWindowBaseSensor(RCESensorBase):
+    day_key = "today"
 
+    def _get_data(self):
+        data = self.coordinator.data
+        return (
+            data.get(f"cheap_mask_{self.day_key}"),
+            data.get(f"prices_{self.day_key}"),
+            data,
+        )
+
+    def _factor(self, data):
+        return 4 if data.get("resolution") == RESOLUTION_15M else 1
+
+# ============================================================
+# CORE SENSORS
+# ============================================================
 class RCEMarketPriceSensor(RCESensorBase):
-    """Current electricity market price."""
-
     @property
     def native_value(self):
         prices = self.coordinator.data.get("prices_today")
         if not prices:
             return None
 
-        idx = get_current_index(self.coordinator.data)
-        if 0 <= idx < len(prices):
+        idx = get_current_index()
+        return prices[idx] if idx < len(prices) else None
+
+class RCENextPriceSensor(RCESensorBase):
+    @property
+    def native_value(self):
+        data = self.coordinator.data
+        prices = data.get("prices_today")
+
+        if not prices:
+            return None
+
+        idx = get_current_index() + 1
+        if idx < len(prices):
             return prices[idx]
 
+        if data.get("prices_tomorrow"):
+            return data["prices_tomorrow"][0]
+
         return None
+
+# ============================================================
+# WINDOW SENSORS
+# ============================================================
+class RCENextCheapWindowSensor(RCEWindowBaseSensor):
+    day_key = "today"
+
+    @property
+    def native_value(self):
+        mask, _, data = self._get_data()
+        if not mask:
+            return None
+
+        start, end = find_next_window(mask, 0)
+        if start is None:
+            return None
+
+        return format_range(start, end, self._factor(data))
+
+class RCENextCheapWindowTomorrowSensor(RCENextCheapWindowSensor):
+    day_key = "tomorrow"
+
+# ============================================================
+# BEST WINDOW
+# ============================================================
+class RCEBestWindowBase(RCEWindowBaseSensor):
+    def _get_best(self):
+        data = self.coordinator.data
+        key = f"best_window_{self.day_key}" if self.day_key == "tomorrow" else "best_window"
+        return data.get(key)
+
+    @property
+    def native_value(self):
+        best = self._get_best()
+        if not best:
+            return None
+
+        data = self.coordinator.data
+        return format_range(best["start"], best["end"], self._factor(data))
 
     @property
     def extra_state_attributes(self):
+        best = self._get_best()
+        if not best:
+            return {}
+
         data = self.coordinator.data
-        stats = data.get("stats", {})
+        avg_day = data.get("stats", {}).get("average")
 
         return {
-            "price_mode": data.get("price_mode"),
-            "operation_mode": data.get("operation_mode"),
-            "peak_range": data.get("peak_range"),
-            "average": stats.get("average"),
-            "min": stats.get("min"),
-            "max": stats.get("max"),
-            "median": stats.get("median"),
-            "max_low_price": stats.get("max_low_price"),
-            "prices_today": data.get("prices_today"),
-            "cheap_mask_today": data.get("cheap_mask_today"),
-            "prices_tomorrow": data.get("prices_tomorrow"),
-            "cheap_mask_tomorrow": data.get("cheap_mask_tomorrow"),
+            "avg_price": best["avg"],
+            "min_price": best["min"],
+            "max_price": best["max"],
+            "duration_slots": best["end"] - best["start"],
+            "savings_vs_avg_day": round(avg_day - best["avg"], 2)
+            if avg_day else None,
         }
 
+class RCEBestWindowTodaySensor(RCEBestWindowBase):
+    day_key = "today"
 
-class RCENextPriceSensor(RCESensorBase):
-    """Next price."""
+class RCEBestWindowTomorrowSensor(RCEBestWindowBase):
+    day_key = "tomorrow"
+
+# ============================================================
+# TOP 3
+# ============================================================
+class RCETop3WindowsBase(RCEWindowBaseSensor):
+    def _get_top(self):
+        data = self.coordinator.data
+        key = f"top_windows_{self.day_key}" if self.day_key == "tomorrow" else "top_windows"
+        return data.get(key)
 
     @property
     def native_value(self):
-        prices = self.coordinator.data.get("prices_today")
-        if not prices:
-            return None
+        top = self._get_top()
+        return f"{len(top)} windows" if top else None
 
-        idx = get_current_index(self.coordinator.data) + 1
-        if 0 <= idx < len(prices):
-            return prices[idx]
-        elif idx == len(prices):
-            return self.coordinator.data.get("prices_tomorrow")[0]
+    @property
+    def extra_state_attributes(self):
+        top = self._get_top()
+        if not top:
+            return {}
 
-        return None
+        data = self.coordinator.data
+        factor = self._factor(data)
 
+        return {
+            "windows": [
+                {
+                    "range": format_range(w["start"], w["end"], factor),
+                    "avg_price": w["avg"],
+                    "min_price": w["min"],
+                    "max_price": w["max"],
+                    "duration_slots": w["end"] - w["start"],
+                }
+                for w in top
+            ]
+        }
+
+class RCETop3WindowsTodaySensor(RCETop3WindowsBase):
+    day_key = "today"
+
+class RCETop3WindowsTomorrowSensor(RCETop3WindowsBase):
+    day_key = "tomorrow"
 
 class RCECheapestPriceTodaySensor(RCESensorBase):
-    """Cheapest price today."""
-
     @property
     def native_value(self):
-        return self.coordinator.data.get("stats", {}).get("min")
-
+        data = self.coordinator.data or {}
+        return data.get("stats", {}).get("min") if data.get("api_status") == "ok" else None
 
 class RCECheapestHourTomorrowSensor(RCESensorBase):
-    """Cheapest hour tomorrow."""
-
-    @property
-    def available(self) -> bool:
-        return True
-
     @property
     def native_value(self):
-        data = self.coordinator.data
-        if not data or data.get("api_status") != "ok":
+        data = self.coordinator.data or {}
+
+        if data.get("api_status") != "ok":
             return None
-            
+
         prices = data.get("prices_tomorrow")
         if not prices:
             return None
 
-        res = data.get("resolution", RESOLUTION_15M)
-        factor = 4 if res == RESOLUTION_15M else 1
-
         idx = prices.index(min(prices))
+        factor = 4 if data.get("resolution") == RESOLUTION_15M else 1
         hour = idx // factor
         minute = (idx % factor) * (60 // factor)
-
-        # Kluczowe dla uniknięcia "13 godzin temu"
         tomorrow = dt_util.now() + timedelta(days=1)
-        
-        return tomorrow.replace(
-            hour=hour,
-            minute=minute,
-            second=0,
-            microsecond=0,
-        )
 
-    @property
-    def extra_state_attributes(self):
-        data = self.coordinator.data or {}
-        
-        if data.get("api_status") != "ok":
-            return {"info": "API error"}
+        return tomorrow.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
-        if not data.get("prices_tomorrow"):
-            return {"info": "Waiting for tomorrow data"}
-        
-        return {"info": "API ok"}
-
-    @property
-    def icon(self) -> str:
-        data = self.coordinator.data or {}
-        if data.get("api_status") != "ok":
-            return "mdi:alert-circle-outline"
-        if not data.get("prices_tomorrow"):
-            return "mdi:clock-wait"
-        return "mdi:cash-clock"
-
-
-class RCENextCheapWindowSensor(RCESensorBase):
-    """Next cheap window today."""
-
-    @property                                                                                      
-    def available(self) -> bool:                                                                   
-        return True                                                                                
-
+# ============================================================
+# DIAGNOSTIC
+# ============================================================
+class RCEApiStatusSensor(RCESensorBase):
     @property
     def native_value(self):
-        data = self.coordinator.data
-        mask = data.get("cheap_mask_today")
-
-        if not mask:
-            return None
-
-        res = data.get("resolution", RESOLUTION_15M)
-        factor = 4 if res == RESOLUTION_15M else 1
-
-        now = dt_util.now()
-        idx = get_current_index(data)
-
-        if 0 <= idx < len(mask) and mask[idx]:
-            hour = idx // factor
-            minute = (idx % factor) * (60 // factor)
-            return now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-
-        for i in range(idx + 1, len(mask)):
-            if mask[i]:
-                hour = i // factor
-                minute = (i % factor) * (60 // factor)
-                return now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-
-        return None
-
-    @property
-    def extra_state_attributes(self):
-        has_window = self.native_value is not None
-        
-        return {
-            "info": "No cheap windows available today" if not has_window else "Cheap window found",
-            "cheap_window_available": has_window
-        }
-
-class RCEApiStatusSensor(RCESensorBase):
-    """Diagnostic sensor: API status."""
-
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    @property
-    def native_value(self) -> str:
-        return self.coordinator.data.get("api_status", "unknown")
-
-    @property
-    def available(self) -> bool:
-        return True
+        return self.coordinator.data.get("api_status")
 
 class RCELastSuccessfulUpdateSensor(RCESensorBase):
-    """Diagnostic sensor: last successful API update."""
-
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
     @property
     def native_value(self):
         return self.coordinator.last_successful_update
 
-    @property
-    def available(self) -> bool:
-        return True
-        
