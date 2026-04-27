@@ -8,12 +8,22 @@
 Overview
 This integration allows for smart device automation based on Polish RCE (Balancing Market) electricity prices published by PSE. The system analyzes price data to identify "Cheap Windows," helping you minimize energy costs.
 
+🆕 **New (latest update):**
+- Full **tomorrow support** (prices, cheap windows, analytics)
+- Detection of:
+  - **Best cheap window (today & tomorrow)**
+  - **Top 3 cheapest windows (today & tomorrow)**
+- New sensors for advanced automation and dashboards
+- Unified window calculation engine (better performance & consistency)
+
+  
 ⚙️ Configuration & Time Resolution
 In the integration settings, you can choose how the system handles time intervals:
 
 15 minutes (RCE): Native resolution. Prices change every 15 minutes (96 data points per day).
 
 1 hour (Averaged): The system calculates an average price for each hour. Best for devices that should avoid frequent cycling (e.g., heat pumps, compressors).
+
 
 📊 Price Calculation Modes (Price Mode)
 These modes define the core logic used to identify the "Cheap Window" based on your preferences:
@@ -172,6 +182,28 @@ SUPER ECO / ECO: Intermediate energy-saving profiles.
 
 COMFORT: Prioritizes device operation while maintaining a reasonable price.
 
+## 🆕 Smart Window Analytics
+
+The integration now provides advanced insights:
+
+### ✔ Best Window
+The most optimal continuous cheap window:
+- lowest average price
+- consistent cheap period
+
+### ✔ Top 3 Windows
+Top cheapest windows ranked by:
+- average price
+- duration
+- min/max values
+
+### ✔ Tomorrow Forecast
+All analytics are also available for **tomorrow**, enabling:
+- day-ahead automation
+- smarter scheduling (EV, heating, etc.)
+
+---
+
 💻 Button Card Code (Grid + Button)
 You can use a standard Grid card with buttons. Paste the following code into the card's YAML editor:
 ```
@@ -301,18 +333,37 @@ All integration settings are available in the options in the integration configu
 
 # Available components
 
-### Binary Sensor
-* rce_low_price
-* tomorrow_data_available
+## Binary Sensor
+- `rce_low_price`
+- `tomorrow_data_available`
 
-### Sensors
-* rce_cheapest_price_today
-* rce_cheapest_hour_tomorrow
-* rce_next_cheap_window
-* sensor.rce_next_cheap_window
+---
 
-```
-  attributes: 
+## Sensors
+
+### Core
+- `sensor.rce_electricity_market_price`
+- `sensor.rce_next_price`
+
+### Today
+- `sensor.rce_cheapest_price_today`
+- `sensor.rce_next_cheap_window`
+- `sensor.rce_best_window_today`
+- `sensor.rce_top3_windows_today`
+
+### Tomorrow 🆕
+- `sensor.rce_cheapest_hour_tomorrow`
+- `sensor.rce_next_cheap_window_tomorrow`
+- `sensor.rce_best_window_tomorrow`
+- `sensor.rce_top3_windows_tomorrow`
+
+### Diagnostics
+- `sensor.rce_api_status`
+- `sensor.rce_last_successful_update`
+
+---
+
+## Sensor Attributes
     price_mode - described above 
     operation_mode - described above
     average - average daily energy price
@@ -325,7 +376,18 @@ All integration settings are available in the options in the integration configu
     cheap_mask_today - today's periods marked as low in the table []
     prices_tomorrow - tomorrow's hourly prices []
     cheap_mask_tomorrow - tomorrrow's periods marked as low in the table []
-  ```
+
+
+---
+
+## 🧠 Example Use Cases
+
+- Run dishwasher in **best window today**
+- Charge EV using **top 3 cheapest windows tomorrow**
+- Heat water only during **cheap mask periods**
+- Delay heavy loads until **next cheap window**
+
+---
 
 [hacs]: https://hacs.xyz
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg
