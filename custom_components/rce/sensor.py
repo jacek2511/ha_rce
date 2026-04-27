@@ -153,8 +153,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
 # ============================================================
 def get_current_index():
     now = dt_util.now()
-    return now.hour * 4 + (now.minute // 15)
-
+    total_seconds = now.hour * 3600 + now.minute * 60 + now.second         
+    return max((total_seconds - 1) // 900, 0)
+    
 def idx_to_time(i, factor):
     h = i // factor
     m = (i % factor) * (60 // factor)
@@ -300,8 +301,7 @@ class RCENextCheapWindowTomorrowSensor(RCENextCheapWindowSensor):
 class RCEBestWindowBase(RCEWindowBaseSensor):
     def _get_best(self):
         data = self.coordinator.data
-        key = f"best_window_{self.day_key}" if self.day_key == "tomorrow" else "best_window"
-        return data.get(key)
+        return data.get(f"best_window_{self.day_key}")
 
     @property
     def native_value(self):
@@ -342,8 +342,7 @@ class RCEBestWindowTomorrowSensor(RCEBestWindowBase):
 class RCETop3WindowsBase(RCEWindowBaseSensor):
     def _get_top(self):
         data = self.coordinator.data
-        key = f"top_windows_{self.day_key}" if self.day_key == "tomorrow" else "top_windows"
-        return data.get(key)
+        return data.get(f"top_windows_{self.day_key}")
 
     @property
     def native_value(self):
