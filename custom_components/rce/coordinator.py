@@ -19,7 +19,7 @@ from .const import *
 _LOGGER = logging.getLogger(__name__)
 
 URL = (
-    "https://v2.api.raporty.pse.pl/api/rce-pln"
+    "https://api.raporty.pse.pl/api/rce-pln"
     "?$filter=business_date eq '{day}'"
     "&$select=dtime,rce_pln"
     "&$orderby=dtime"
