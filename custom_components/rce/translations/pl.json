@@ -2,10 +2,15 @@
   "entity": {
     "sensor": {
       "electricity_market_price": { "name": "Rynkowa cena energii" },
-      "next_price": { "name": "Następna cena" },
-      "next_cheap_window": { "name": "Następne tanie okno dzisiaj" },
-      "cheapest_price_today": { "name": "Najniższa cena dzisiaj" },
-      "cheapest_hour_tomorrow": { "name": "Najtańsza godzina jutro" },
+      "next_price": { "name": "Nast..pna cena" },
+      "next_cheap_window": { "name": "Nast..pne tanie okno dzisiaj" },
+      "next_cheap_window_tomorrow": { "name": "Nast..pne tanie okno jutro" },
+      "cheapest_price_today": { "name": "Najni..sza cena dzisiaj" },
+      "cheapest_hour_tomorrow": { "name": "Najta..sza godzina jutro" },
+      "best_window_today": { "name": "Najlepsze okno dzisiaj" },
+      "top3_windows_today": { "name": "TOP 3 tanich okien dzisiaj" },
+      "best_window_tomorrow": { "name": "Najlepsze okno jutro" },
+      "top3_windows_tomorrow": { "name": "TOP 3 okna jutro" },
       "api_status": { "name": "Status API" },
       "last_successful_update": { "name": "Ostatnia aktualizacja" }
     },
