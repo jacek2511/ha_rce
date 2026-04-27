@@ -243,7 +243,7 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
             windows_today = self._build_windows_data(prices_today, cheap_mask_today)
             windows_today_sorted = sorted(windows_today, key=lambda x: x["avg"])
             best_window_today = windows_today_sorted[0] if windows_today_sorted else None
-            top3_windows_today = windows_today_sorted[:3]
+            top_windows_today = windows_today_sorted[:3]
 
             # -----------------------
             # WINDOWS TOMORROW
@@ -277,7 +277,7 @@ class RCEDataUpdateCoordinator(DataUpdateCoordinator):
                 "cheap_mask_today": cheap_mask_today,
                 "windows_today": windows_today,
                 "best_window_today": best_window_today,
-                "top3_windows_today": top3_windows_today,
+                "top_windows_today": top_windows_today,
                 "prices_tomorrow": prices_tomorrow or [],
                 "cheap_mask_tomorrow": cheap_mask_tomorrow,
                 "best_window_tomorrow": best_window_tomorrow,
