@@ -1,55 +1,102 @@
-[![GitHub Latest Release][releases_shield]][latest_release] [![License][license-shield]](LICENSE) [![GitHub All Releases][downloads_total_shield]][releases] [![GH-last-commit][latest_commit]][commits] [![HACS][hacsbadge]][hacs]
-<!-- [![usage_badge](https://img.shields.io/badge/dynamic/json?label=Usage&query=ha_rce.total&url=https://analytics.home-assistant.io/custom_integrations.json)](https://analytics.home-assistant.io) -->
-
-
 # homeassistant-rce
-**Rynkowa cena energii elektrycznej (RCE)**
 
-Overview
-This integration allows for smart device automation based on Polish RCE (Balancing Market) electricity prices published by PSE. The system analyzes price data to identify "Cheap Windows," helping you minimize energy costs.
+[![GitHub Latest Release][releases_shield]][latest_release] 
+[![License][license-shield]](LICENSE) 
+[![GitHub All Releases][downloads_total_shield]][releases] 
+[![GH-last-commit][latest_commit]][commits] 
+[![HACS][hacsbadge]][hacs]
 
-🆕 **New (latest update):**
-- Full **tomorrow support** (prices, cheap windows, analytics)
-- Detection of:
-  - **Best cheap window (today & tomorrow)**
-  - **Top 3 cheapest windows (today & tomorrow)**
-- New sensors for advanced automation and dashboards
-- Unified window calculation engine (better performance & consistency)
+**Rynkowa cena energii elektrycznej (RCE)** – Integracja dla Home Assistant obsługująca polskie ceny rynkowe publikowane przez PSE.
 
-  
-⚙️ Configuration & Time Resolution
-In the integration settings, you can choose how the system handles time intervals:
+---
 
-15 minutes (RCE): Native resolution. Prices change every 15 minutes (96 data points per day).
+## 📝 Overview
+This integration allows for smart device automation based on Polish RCE (Balancing Market) electricity prices. The system analyzes price data to identify **"Cheap Windows"**, helping you minimize energy costs automatically.
 
-1 hour (Averaged): The system calculates an average price for each hour. Best for devices that should avoid frequent cycling (e.g., heat pumps, compressors).
+### 🆕 What's New
+- **Full Tomorrow Support:** Access to prices, cheap windows, and analytics for the next day.
+- **Advanced Analytics:** Detection of the **Best cheap window** and **Top 3 cheapest windows** (today & tomorrow).
+- **New Sensors:** Dedicated entities for advanced dashboards and automations.
+- **Optimized Engine:** Unified window calculation for better performance and consistency.
 
+---
 
-📊 Price Calculation Modes (Price Mode)
-These modes define the core logic used to identify the "Cheap Window" based on your preferences:
+## ⚙️ Configuration & Time Resolution
+Settings are available in the integration configuration panel. You can define the time granularity:
 
-LOW PRICE CUTOFF: The most popular mode. It calculates a price threshold based on a percentile (e.g., the cheapest 30% of the day). If the current price is below this threshold, the window is active.
+* **15 minutes (RCE):** Native resolution. Prices change every 15 minutes (96 data points per day).
+* **1 hour (Averaged):** Calculates an average price for each hour. Best for devices that avoid frequent cycling (e.g., heat pumps, compressors).
 
-CHEAPEST CONSECUTIVE RANGES: Ideal for appliances that need to run uninterrupted (like a dishwasher or washing machine). It searches for the single cheapest continuous block of time of a specified length (e.g., the cheapest 3-hour block).
+---
 
-CHEAPEST NOT CONSECUTIVE: Perfect for battery charging or EV charging. It selects a specific number of the cheapest intervals throughout the day, even if they are scattered at different times.
+## 📊 Price Calculation Modes
+These modes define the logic used to identify "Cheap Windows":
 
-ALWAYS ON (FORCE ON): Overrides all logic and marks every interval as "Cheap." Use this when you need to bypass the price automation and run your devices immediately.
+1.  **LOW PRICE CUTOFF:** Calculates a threshold based on a percentile (e.g., the cheapest 30% of the day). Active when the price is below this limit.
+2.  **CHEAPEST CONSECUTIVE RANGES:** Searches for the single cheapest continuous block (e.g., 3-hour block). Ideal for dishwashers or washing machines.
+3.  **CHEAPEST NOT CONSECUTIVE:** Selects a specific number of the cheapest intervals throughout the day, even if scattered. Perfect for EV/Battery charging.
+4.  **ALWAYS ON (FORCE ON):** Overrides logic and marks everything as "Cheap" for immediate manual overrides.
 
-📈 Operation Modes
-These profiles determine how "aggressively" the system identifies low-price periods in Low Price Cutoff mode:
+---
 
-Aggressive: Targets only the extreme lows (bottom 10-15% of prices). Maximum savings, shortest runtime.
+## 📈 Operation Modes
+Determines how aggressively the system identifies low-price periods (in *Low Price Cutoff* mode):
 
-Super Eco: Highly efficient, focuses on the lowest daily rates.
+* **Aggressive:** Targets absolute minimums (bottom 10-15%). Max savings, shortest runtime.
+* **Super Eco:** Highly efficient, focuses on the lowest daily rates.
+* **Eco:** Balanced energy-saving mode.
+* **Comfort:** Wider operating windows for stability and convenience.
 
-Eco: Balanced energy-saving mode.
+---
 
-Comfort: Wider operating windows, ensuring stability while maintaining low costs.
+## 🧩 Available Components
 
-📊 ApexCharts Visualization
-To see real-time prices and cheap windows on your dashboard, use the following ApexCharts code:
-```
+### 🟢 Binary Sensors
+* `binary_sensor.rce_low_price`
+* `binary_sensor.tomorrow_data_available`
+
+### 📊 Sensors
+| Category | Entity ID |
+| :--- | :--- |
+| **Core** | `sensor.rce_electricity_market_price`, `sensor.rce_next_price` |
+| **Today** | `sensor.rce_cheapest_price_today`, `sensor.rce_next_cheap_window`, `sensor.rce_best_window_today`, `sensor.rce_top3_windows_today` |
+| **Tomorrow** 🆕 | `sensor.rce_cheapest_hour_tomorrow`, `sensor.rce_next_cheap_window_tomorrow`, `sensor.rce_best_window_tomorrow`, `sensor.rce_top3_windows_tomorrow` |
+| **Diagnostics** | `sensor.rce_api_status`, `sensor.rce_last_successful_update` |
+
+---
+
+## 🔍 Sensor Attributes: `sensor.rce_electricity_market_price`
+
+### Core Attributes
+* `price_mode` / `operation_mode` – Current settings.
+* `average` / `min` / `max` / `median` – Daily statistics.
+* `prices_today` / `prices_tomorrow` – Full price arrays.
+* `cheap_mask_today` / `cheap_mask_tomorrow` – Boolean arrays for automations.
+
+### 🟢 Window Analytics
+* **Best Window:** `avg_price`, `min_price`, `max_price`, `duration_slots`, `savings_vs_avg_day`.
+* **Top 3 Windows:** List of 3 best ranges with their respective stats.
+* **Next Cheap Window:** `cheap_window_available`, `duration_minutes`, `start_price`, `avg_price`.
+
+---
+
+## 🚀 Installation
+
+### Using [HACS](https://hacs.xyz/) (Recommended)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jacek2511&repository=ha_rce&category=Integration)
+
+1. Open **HACS**.
+2. Click **Integrations**.
+3. Click the three dots (top right) -> **Custom repositories**.
+4. Add `https://github.com/jacek2511/ha_rce/` with category **Integration**.
+5. Restart Home Assistant.
+
+---
+
+## 🖼️ Dashboard Visualization
+
+### ApexCharts Price Graph
+```yaml
 type: custom:apexcharts-card
 update_interval: 5min
 header:
@@ -57,7 +104,6 @@ header:
   title: Rynek RCE - Dzisiaj
   show_states: true
   colorize_states: true
-  standard_format: true
 graph_span: 24h
 span:
   start: day
@@ -70,39 +116,28 @@ series:
     show:
       in_chart: false
       in_header: true
-      legend_value: false
-    transform: |
-      const minPrice = entity.attributes.min;
-      return minPrice;  
+    transform: return entity.attributes.min;  
   - entity: sensor.rce_electricity_market_price
     name: Aktualna
     show:
       in_chart: false
       in_header: true
-      legend_value: false
     data_generator: |
       const prices = entity.attributes.prices_today;
       const now = new Date();
       const index = (now.getHours() * 4) + Math.floor(now.getMinutes() / 15);
-      const currentPrice = prices[index];
-      return [[now.getTime(), currentPrice]];
+      return [[now.getTime(), prices[index]]];
   - entity: sensor.rce_electricity_market_price
     name: Maksymalna
     show:
       in_chart: false
       in_header: true
-      legend_value: false
-    transform: |
-      const maxPrice = entity.attributes.max;
-      return maxPrice;
+    transform: return entity.attributes.max;
   - entity: sensor.rce_electricity_market_price
     name: Cena aktualna
     type: area
     color: "#2196f3"
-    stroke_width: 2
     show:
-      extremas: false
-      datalabels: false
       in_header: false
       hidden_by_default: true
     data_generator: >
@@ -112,55 +147,15 @@ series:
     name: Średnia
     type: line
     color: "#9e9e9e"
-    stroke_width: 2
-    show:
-      legend_value: true
     data_generator: >
-      const avg = entity.attributes.average; return
-      entity.attributes.prices_today.map((_, i) => [new
+      const avg = entity.attributes.average; 
+      return entity.attributes.prices_today.map((_, i) => [new
       Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), avg]);
-  - entity: sensor.rce_electricity_market_price
-    name: "Drogo "
-    type: column
-    color: "#e53935"
-    opacity: 0.8
-    stroke_width: 2
-    show:
-      in_header: false
-      legend_value: false
-    data_generator: |
-      const prices = entity.attributes.prices_today;
-      const avg = entity.attributes.average;
-      const mask = entity.attributes.cheap_mask_today;
-      return prices.map((p, i) => {
-        const isCheap = String(mask[i]).toLowerCase() === 'true';
-        return [new Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), (p > avg && !isCheap) ? p : 0];
-      });
-  - entity: sensor.rce_electricity_market_price
-    name: "Normalnie "
-    type: column
-    color: "#2196f3"
-    opacity: 0.8
-    show:
-      in_header: false
-      legend_value: false
-    data_generator: |
-      const prices = entity.attributes.prices_today;
-      const avg = entity.attributes.average;
-      const mask = entity.attributes.cheap_mask_today;
-      return prices.map((p, i) => {
-        const isCheap = String(mask[i]).toLowerCase() === 'true';
-        return [new Date().setHours(0,0,0,0) + (i * 15 * 60 * 1000), (p <= avg && !isCheap) ? p : 0];
-      });
   - entity: sensor.rce_electricity_market_price
     name: "Tanie okno "
     type: column
     color: "#4caf50"
     opacity: 0.8
-    stroke_width: 2
-    show:
-      in_header: false
-      legend_value: false
     data_generator: |
       const prices = entity.attributes.prices_today;
       const mask = entity.attributes.cheap_mask_today;
@@ -170,48 +165,11 @@ series:
       });
 ```
 
-🎮 Quick Control: Mode Selection Buttons
-You can add a button panel to your Dashboard that allows you to change your energy-saving strategy with a single click.
-
-Mode Capabilities:
-FORCE ON (Always On Mode): Ignores prices and forces the device to operate.
-
-AGGRESSIVE: Operates only during absolute price minimums (peak cheap energy periods).
-
-SUPER ECO / ECO: Intermediate energy-saving profiles.
-
-COMFORT: Prioritizes device operation while maintaining a reasonable price.
-
-## 🆕 Smart Window Analytics
-
-The integration now provides advanced insights:
-
-### ✔ Best Window
-The most optimal continuous cheap window:
-- lowest average price
-- consistent cheap period
-
-### ✔ Top 3 Windows
-Top cheapest windows ranked by:
-- average price
-- duration
-- min/max values
-
-### ✔ Tomorrow Forecast
-All analytics are also available for **tomorrow**, enabling:
-- day-ahead automation
-- smarter scheduling (EV, heating, etc.)
-
----
-
-💻 Button Card Code (Grid + Button)
-You can use a standard Grid card with buttons. Paste the following code into the card's YAML editor:
-```
+### Quick Control: Mode Selection
+```yaml
 type: horizontal-stack
 cards:
-  - show_name: true
-    show_icon: true
-    type: button
+  - type: button
     name: SUPER ECO
     icon: mdi:sprout
     tap_action:
@@ -220,19 +178,7 @@ cards:
       data:
         price_mode: LOW PRICE CUTOFF
         mode: super_eco
-    card_mod:
-      style: |
-        ha-state-icon {
-          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'super_eco') and is_state_attr('sensor.rce_electricity_market_price', 'price_mode', 'LOW PRICE CUTOFF') %}
-            color: #4caf50 !important;
-            filter: drop-shadow(0 0 5px #4caf50);
-          {% else %}
-            color: var(--secondary-text-color);
-          {% endif %}
-        }
-  - show_name: true
-    show_icon: true
-    type: button
+  - type: button
     name: ECO
     icon: mdi:leaf
     tap_action:
@@ -241,19 +187,7 @@ cards:
       data:
         price_mode: LOW PRICE CUTOFF
         mode: eco
-    card_mod:
-      style: |
-        ha-state-icon {
-          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'eco') and is_state_attr('sensor.rce_electricity_market_price', 'price_mode', 'LOW PRICE CUTOFF') %}
-            color: #8bc34a !important;
-            filter: drop-shadow(0 0 5px #8bc34a);
-          {% else %}
-            color: var(--secondary-text-color);
-          {% endif %}
-        }
-  - show_name: true
-    show_icon: true
-    type: button
+  - type: button
     name: Komfort
     icon: mdi:home-thermometer
     tap_action:
@@ -262,19 +196,7 @@ cards:
       data:
         price_mode: LOW PRICE CUTOFF
         mode: comfort
-    card_mod:
-      style: |
-        ha-state-icon {
-          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'comfort') and is_state_attr('sensor.rce_electricity_market_price', 'price_mode', 'LOW PRICE CUTOFF') %}
-            color: #2196f3 !important;
-            filter: drop-shadow(0 0 5px #2196f3);
-          {% else %}
-            color: var(--secondary-text-color);
-          {% endif %}
-        }
-  - show_name: true
-    show_icon: true
-    type: button
+  - type: button
     name: Agresywny
     icon: mdi:lightning-bolt
     tap_action:
@@ -283,19 +205,7 @@ cards:
       data:
         price_mode: LOW PRICE CUTOFF
         mode: aggressive
-    card_mod:
-      style: |
-        ha-state-icon {
-          {% if is_state_attr('sensor.rce_electricity_market_price', 'operation_mode', 'aggressive') and is_state_attr('sensor.rce_electricity_market_price', 'price_mode', 'LOW PRICE CUTOFF') %}
-            color: #ff5722 !important;
-            filter: drop-shadow(0 0 5px #ff5722);
-          {% else %}
-            color: var(--secondary-text-color);
-          {% endif %}
-        }
-  - show_name: true
-    show_icon: true
-    type: button
+  - type: button
     name: Wymuś ON
     icon: mdi:power-plug
     tap_action:
@@ -303,89 +213,20 @@ cards:
       service: rce.set_operation_mode
       data:
         price_mode: ALWAYS ON
-    card_mod:
-      style: |
-        ha-state-icon {
-          {% if is_state_attr('sensor.rce_electricity_market_price', 'price_mode', 'ALWAYS ON') %}
-            color: #ffeb3b !important;
-            filter: drop-shadow(0 0 5px #ffeb3b);
-          {% else %}
-            color: var(--secondary-text-color);
-          {% endif %}
-        }
 ```
 
-# Install
-
-### Using [HACS](https://hacs.xyz/) (recommended)
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jacek2511&repository=ha_rce&category=Integration)
-
-You can install the plugin via HACS using the following steps
-
-1. Open HACS
-2. Click Integrations
-3. Clik the three dots on the top right
-4. Click "Custom repositories"
-5. Add https://github.com/jacek2511/ha_rce/ and a category of your choice
-
-# Configuration
-All integration settings are available in the options in the integration configuration panel.
-
-# Available components
-
-## Binary Sensor
-- `rce_low_price`
-- `tomorrow_data_available`
-
 ---
 
-## Sensors
+## 💡 Notes & Use Cases
+> [!IMPORTANT]
+> * **Tomorrow data** becomes available only after PSE publishes it (usually early afternoon).
+> * All window calculations depend on your selected **Price Mode** and **Operation Mode**.
 
-### Core
-- `sensor.rce_electricity_market_price`
-- `sensor.rce_next_price`
-
-### Today
-- `sensor.rce_cheapest_price_today`
-- `sensor.rce_next_cheap_window`
-- `sensor.rce_best_window_today`
-- `sensor.rce_top3_windows_today`
-
-### Tomorrow 🆕
-- `sensor.rce_cheapest_hour_tomorrow`
-- `sensor.rce_next_cheap_window_tomorrow`
-- `sensor.rce_best_window_tomorrow`
-- `sensor.rce_top3_windows_tomorrow`
-
-### Diagnostics
-- `sensor.rce_api_status`
-- `sensor.rce_last_successful_update`
-
----
-
-## Sensor Attributes
-    price_mode - described above 
-    operation_mode - described above
-    average - average daily energy price
-    min - minimum daily energy price
-    max - maximum daily energy price
-    median - median daily energy price
-    peak_range - configurable range of hours for which attributes is calculated
-    low_price_cutoff - percentage of average price to set the low price attribute (low_price = hour_price < average * low_price_cutoff)
-    prices_today - today's hourly prices in the table []
-    cheap_mask_today - today's periods marked as low in the table []
-    prices_tomorrow - tomorrow's hourly prices []
-    cheap_mask_tomorrow - tomorrrow's periods marked as low in the table []
-
-
----
-
-## 🧠 Example Use Cases
-
-- Run dishwasher in **best window today**
-- Charge EV using **top 3 cheapest windows tomorrow**
-- Heat water only during **cheap mask periods**
-- Delay heavy loads until **next cheap window**
+**🧠 Example Use Cases:**
+* **Optimization:** Run dishwasher in the `best window today`.
+* **EV Charging:** Charge EV using `top 3 cheapest windows tomorrow`.
+* **Smart Heating:** Heat water only during `cheap mask periods`.
+* **Load Shifting:** Delay heavy loads until the `next cheap window`.
 
 ---
 
@@ -397,4 +238,4 @@ All integration settings are available in the options in the integration configu
 [downloads_total_shield]: https://img.shields.io/github/downloads/jacek2511/ha_rce/total
 [license-shield]: https://img.shields.io/github/license/jacek2511/ha_rce
 [latest_commit]: https://img.shields.io/github/last-commit/jacek2511/ha_rce.svg?style=flat-square
-[commits]: https://github.com/jack2511/ha_rce/commits/master
+[commits]: https://github.com/jacek2511/ha_rce/commits/master
